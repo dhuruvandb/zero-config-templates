@@ -7,16 +7,26 @@ export function Register({ switchToLogin }: { switchToLogin: () => void }) {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | string[]>("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      await auth.register(email, password);
-    } catch (err: any) {
-      console.log({ err });
+    setError("");
+    const result = await auth.register(email, password);
 
-      setError(err.message);
+    try {
+      if (result.accessToken) {
+        switchToLogin();
+      }
+    } catch (err: any) {
+      // Backend may return: { errors: [...] } or { message: "..." }
+
+      if (err?.response?.data?.errors) {
+        // Extract express-validator error messages
+        setError(err.response.data.errors.map((e: any) => e.msg));
+      } else {
+        setError(err?.response?.data?.message || "Registration failed");
+      }
     }
   };
 
@@ -24,7 +34,17 @@ export function Register({ switchToLogin }: { switchToLogin: () => void }) {
     <div className="auth-card">
       <h2 className="auth-title">Register</h2>
 
-      {error && <p className="error-msg">{error}</p>}
+      {/* Show single or multiple error messages */}
+      {error &&
+        (Array.isArray(error) ? (
+          <ul className="error-msg">
+            {error.map((msg, i) => (
+              <li key={i}>{msg}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="error-msg">{error}</p>
+        ))}
 
       <form onSubmit={handleSubmit}>
         <div className="auth-field">
@@ -43,7 +63,7 @@ export function Register({ switchToLogin }: { switchToLogin: () => void }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
-            placeholder="Create a password"
+            placeholder="Create a strong password"
           />
         </div>
 

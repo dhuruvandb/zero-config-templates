@@ -13,7 +13,7 @@ export function Login({ switchToRegister }: { switchToRegister: () => void }) {
     e.preventDefault();
     try {
       await auth.login(email, password);
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message);
     }
   };

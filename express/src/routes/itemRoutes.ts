@@ -7,8 +7,6 @@ const router = Router();
 router.get("/", async (_req: Request, res: Response) => {
   try {
     const items = await Item.find();
-    console.log({ items });
-
     res.json(items);
   } catch (error) {
     console.error(error);

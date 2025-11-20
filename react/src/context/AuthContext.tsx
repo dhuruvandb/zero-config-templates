@@ -1,4 +1,6 @@
-import { createContext, useState, ReactNode } from "react";
+import { createContext, useState } from "react";
+import type { ReactNode } from "react";
+
 import api from "../api/api";
 
 interface AuthContextType {
@@ -24,9 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("token", res.accessToken);
   }
 
-  async function register(email: string, password: string) {
+  async function register(email: string, password: string): Promise<string> {
     const res = await api.post("/api/auth/register", { email, password });
-    if (!res.success) throw new Error(res.message || "Registration failed");
+
+    if (!res.accessToken) {
+      throw new Error(res.message);
+    } else {
+      return res;
+    }
   }
 
   function logout() {

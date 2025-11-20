@@ -37,8 +37,20 @@ function generateRefreshToken(userId: string): string {
 // Registration route
 router.post(
   "/register",
-  body("email").isEmail(),
-  body("password").isLength({ min: 6 }),
+  body("email").isEmail().withMessage("Please provide a valid email address"),
+
+  body("password")
+    .isLength({ min: 8 })
+    .withMessage("Password must be at least 8 characters long")
+    .matches(/[A-Z]/)
+    .withMessage("Password must contain at least one uppercase letter")
+    .matches(/[a-z]/)
+    .withMessage("Password must contain at least one lowercase letter")
+    .matches(/[0-9]/)
+    .withMessage("Password must contain at least one number")
+    .matches(/[!@#$%^&*(),.?\":{}|<>]/)
+    .withMessage("Password must contain at least one special character"),
+
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -70,7 +82,7 @@ router.post(
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
           path: "/api/auth/refresh",
-          maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+          maxAge: 1000 * 60 * 60 * 24 * 7,
         })
         .json({ accessToken });
     } catch (err) {

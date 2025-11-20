@@ -6,7 +6,6 @@ export async function post(path: string, body: any) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  console.log({ res });
 
   return res.json();
 }
