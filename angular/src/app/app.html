@@ -1,0 +1,12 @@
+@if (!authService.accessToken()) {
+  <app-auth />
+} @else {
+  <div class="app-wrapper">
+    <div class="app-header">
+      <h1>MERN Starter CRUD (Authenticated)</h1>
+      <button class="logout-btn" (click)="authService.logout()">Logout</button>
+    </div>
+
+    <app-items [accessToken]="authService.accessToken()!" />
+  </div>
+}

@@ -1,0 +1,258 @@
+/* -----------------------------------------------------
+   GLOBAL RESET + THEME
+----------------------------------------------------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f5f7;
+  color: #1d1d1f;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Center the entire app visually */
+.app-container {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 1rem;
+}
+
+/* -----------------------------------------------------
+   CARD (Used for Login / Register)
+----------------------------------------------------- */
+.auth-card {
+  max-width: 420px;
+  margin: 3rem auto;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.auth-title {
+  font-size: 1.9rem;
+  text-align: center;
+  margin-bottom: 1.2rem;
+  font-weight: 600;
+}
+
+.auth-field {
+  margin-bottom: 1.2rem;
+}
+
+.auth-field label {
+  display: block;
+  font-size: 0.95rem;
+  margin-bottom: 0.3rem;
+  font-weight: 500;
+}
+
+.auth-field input {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+  transition: 0.2s ease-in-out;
+}
+
+.auth-field input:focus {
+  border-color: #007aff;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+}
+
+.auth-btn {
+  width: 100%;
+  padding: 0.9rem;
+  background: #007aff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  transition: 0.2s ease-in-out;
+}
+
+.auth-btn:hover {
+  background: #0064d6;
+}
+
+.auth-switch {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.auth-switch span {
+  color: #007aff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.error-msg {
+  background: #ffefef;
+  color: #d60000;
+  padding: 0.7rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  border-left: 3px solid #d60000;
+}
+
+.error-msg ul {
+  margin-left: 1.2rem;
+}
+
+/* -----------------------------------------------------
+   LOGGED-IN AREA (CRUD UI)
+----------------------------------------------------- */
+
+.app-wrapper {
+  max-width: 650px;
+  margin: 3rem auto;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-header h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.logout-btn {
+  padding: 0.45rem 0.9rem;
+  background: #ff3b30;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  transition: 0.2s;
+}
+
+.logout-btn:hover {
+  background: #d52b22;
+}
+
+/* input + add button */
+.add-item-box {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1.2rem 0;
+}
+
+.add-item-box input {
+  flex: 1;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #cfcfcf;
+}
+
+.add-item-btn {
+  padding: 0.6rem 1rem;
+  background: #34c759;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: 0.15s;
+}
+
+.add-item-btn:hover {
+  background: #28a745;
+}
+
+/* item list */
+.item-list {
+  list-style: none;
+  margin-top: 1rem;
+}
+
+.item {
+  padding: 0.75rem 1rem;
+  background: #f8faff;
+  border: 1px solid #e4e6eb;
+  border-radius: 10px;
+  margin-bottom: 0.7rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: 0.2s;
+}
+
+.delete-btn {
+  padding: 0.35rem 0.7rem;
+  background: #ff453a;
+  border: none;
+  color: white;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  transition: 0.15s;
+}
+
+.delete-btn:hover {
+  background: #c72e23;
+}
+
+/* -----------------------------------------------------
+   ANIMATIONS
+----------------------------------------------------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* -----------------------------------------------------
+   DARK MODE SUPPORT
+----------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #1c1c1e;
+    color: #f5f5f7;
+  }
+
+  .auth-card,
+  .app-wrapper {
+    background: #2c2c2e;
+    color: white;
+    box-shadow: none;
+  }
+
+  .auth-field input,
+  .add-item-box input {
+    background: #3a3a3c;
+    border-color: #4a4a4c;
+    color: white;
+  }
+
+  .item {
+    background: #3a3a3c;
+    border-color: #505052;
+  }
+}
