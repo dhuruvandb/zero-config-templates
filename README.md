@@ -1,141 +1,525 @@
-MERN Starter Template
-=====================
+# Zero-Config Templates
 
-This project is a boilerplate starter for building full-stack MERN applications with **TypeScript** support and **JWT-based authentication**.
+Production-ready starter templates for modern full-stack web applications with **TypeScript** and **JWT-based authentication** pre-configured.
 
-Project Structure
------------------
+## 🎯 Overview
 
-mern-starter\
-├── react/      # React + Vite frontend with authentication support\
-├── express/        # Express + MongoDB backend with authentication APIs\
-├── README.md      # This file
-    
+This repository is a collection of zero-configuration boilerplate templates covering multiple popular frontend and backend stacks. Each template comes with enterprise-grade authentication, database integration, and best practices baked in - so you can start building features immediately.
 
-Features
---------
+## 📦 Available Templates
 
-*   React + Vite frontend
-*   Express + MongoDB backend
-*   JWT authentication (Access + Refresh tokens)
-*   User registration & login
-*   Protected routes
-*   TypeScript support
+### Frontend Templates
 
-Getting Started
----------------
+| Framework | Version | Features | Port |
+|-----------|---------|----------|------|
+| **React** | Vite + TypeScript | Auth context, Protected routes, Token refresh | 5173 |
+| **Angular** | v21 + SSR | Auth guards, Signals, Tailwind CSS 4 | 4200 |
+| **Next.js** | App Router | SQLite auth, Server Actions, Full CRUD | 3000 |
 
-These instructions will help you run the project locally.
+### Backend Templates
+
+| Framework | Database | ORM | Features | Port |
+|-----------|----------|-----|----------|------|
+| **Express** | MongoDB | Mongoose | In-memory fallback, Auto-migration | 5000 |
+| **NestJS** | PostgreSQL | Prisma | Modular architecture, Strict TypeScript | 5000 |
+
+## 🚀 Quick Start Combinations
+
+### Option 1: MERN Stack (React + Express)
+**Best for:** Rapid prototyping, JavaScript-focused teams
+```bash
+# Terminal 1 - Backend
+cd express
+npm install
+cp .env.example .env
+# Edit .env with your MongoDB URI (optional - uses in-memory DB if not provided)
+npm run dev
+
+# Terminal 2 - Frontend
+cd react
+npm install
+npm run dev
+```
+**Access:** http://localhost:5173
+
+---
+
+### Option 2: Enterprise Stack (Angular + NestJS)
+**Best for:** Large-scale applications, strict type safety
+```bash
+# Terminal 1 - Backend
+cd nestjs
+npm install
+cp .env.example .env
+# Edit .env with PostgreSQL URI and JWT secrets
+npx prisma generate
+npx prisma migrate dev --name init
+npm run start:dev
+
+# Terminal 2 - Frontend
+cd angular
+npm install
+npm start
+```
+**Access:** http://localhost:4200
+
+---
+
+### Option 3: Full-Stack Next.js
+**Best for:** Serverless deployments, single deployment unit
+```bash
+cd nextjs
+npm install
+npm run dev
+```
+**Access:** http://localhost:3000
+
+---
+
+## ✨ Features
+
+### 🔐 Security-First Authentication
+- ✅ **JWT Access Tokens** (15 min expiry)
+- ✅ **HTTP-only Refresh Tokens** (7 day expiry)
+- ✅ **Token Rotation** on refresh
+- ✅ **Strong Password Requirements**:
+  - Minimum 8 characters
+  - At least 1 uppercase letter
+  - At least 1 lowercase letter
+  - At least 1 number
+  - At least 1 special character
+- ✅ **bcrypt Password Hashing** (10 rounds)
+
+### 🛠️ Developer Experience
+- ✅ **100% TypeScript** - Full type safety
+- ✅ **Zero Configuration** - Works out of the box
+- ✅ **Environment Variables** - Easy configuration
+- ✅ **CORS Configured** - Frontend-backend communication ready
+- ✅ **Hot Module Replacement** - Fast development
+
+### 📚 Database Flexibility
+- **MongoDB** (Express) - Document database with in-memory fallback
+- **PostgreSQL** (NestJS) - Relational database with Prisma ORM
+- **SQLite** (Next.js) - Embedded database for full-stack apps
+
+---
+
+## 📖 Detailed Setup Guides
 
 ### Prerequisites
+- **Node.js** v18+ (v20 recommended)
+- **npm** or **yarn**
+- **Database** (based on chosen stack):
+  - MongoDB URI for Express (optional - uses in-memory if not provided)
+  - PostgreSQL for NestJS
+  - SQLite auto-created for Next.js
 
-*   Node.js (v14 or higher recommended)
-*   npm (comes with Node.js)
-*   MongoDB instance URI (optional; if not provided, an in-memory server will be used)
+---
 
-Installation
-------------
+### Express Backend Setup
 
-Open two terminal windows or use your favorite terminal multiplexer.
-
-### Backend
-
-cd server \
+```bash
+cd express
 npm install
-    
+```
 
-### Frontend
+**Environment Configuration:**
+```bash
+cp .env.example .env
+```
 
-cd client \
-npm install
-    
-
-Configuration: MongoDB & Authentication
----------------------------------------
-
-The backend uses a MongoDB URI to connect to a real database.
-
-1.  Create a `.env` file inside the `express/` folder.
-2.  Add the following inside `.env`:
-
-MONGO\_URI=your-mongodb-connection-string
+Edit `.env`:
+```env
+MONGO_URI=mongodb://localhost:27017/myapp  # Optional
 PORT=5000
-ACCESS\_TOKEN\_SECRET=your\_access\_secret\_here
-REFRESH\_TOKEN\_SECRET=your\_refresh\_secret\_here
-ACCESS\_TOKEN\_EXPIRY=15m
-REFRESH\_TOKEN\_EXPIRY=7d
-    
+ACCESS_TOKEN_SECRET=your_random_secret_here
+REFRESH_TOKEN_SECRET=another_random_secret_here
+ACCESS_TOKEN_EXPIRY=15m
+REFRESH_TOKEN_EXPIRY=7d
+FRONTEND_URL=http://localhost:5173
+```
 
-If you do not provide a `MONGO_URI`, the backend will fallback to using an **in-memory MongoDB server** for rapid prototyping purposes.
+**Generate Secrets:**
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
 
-Running the Project
--------------------
-
-Open two terminal windows/tabs:
-
-### Start the backend server:
-
-cd server\
+**Run:**
+```bash
 npm run dev
-    
+```
 
-### Start the frontend server:
+**Features:**
+- Smart MongoDB fallback to in-memory server
+- Automatic migration from in-memory to real DB when available
+- Cookie-based refresh tokens
 
-cd client\
+---
+
+### NestJS Backend Setup
+
+```bash
+cd nestjs
+npm install
+cp .env.example .env
+```
+
+Edit `.env`:
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/mydb?schema=public"
+ACCESS_TOKEN_SECRET=your_strong_random_secret
+REFRESH_TOKEN_SECRET=another_strong_random_secret
+ACCESS_TOKEN_EXPIRY=15m
+REFRESH_TOKEN_EXPIRY=7d
+FRONTEND_URL=http://localhost:4200
+PORT=5000
+NODE_ENV=development
+```
+
+**Database Setup:**
+```bash
+npx prisma generate
+npx prisma migrate dev --name init
+npx prisma studio  # Optional: View your data
+```
+
+**Run:**
+```bash
+npm run start:dev
+```
+
+**Features:**
+- Prisma ORM with type-safe queries
+- Modular NestJS architecture
+- Request validation with class-validator
+- Swagger API docs ready
+
+---
+
+### React Frontend Setup
+
+```bash
+cd react
+npm install
 npm run dev
-    
+```
 
-**Frontend:** [http://localhost:5173](http://localhost:5173)
+**Features:**
+- React 18 with TypeScript
+- Vite for blazing-fast HMR
+- React Router v6 with protected routes
+- Auth context for state management
+- Automatic token refresh
+- Tailwind CSS ready
 
-**Backend:** [http://localhost:5000](http://localhost:5000)
+**Connect to Backend:**
+Update API URL in your environment or code to point to:
+- Express: `http://localhost:5000`
+- NestJS: `http://localhost:5000`
 
-Authentication Usage
---------------------
+---
 
-### Backend
+### Angular Frontend Setup
 
-The backend exposes the following routes:
+```bash
+cd angular
+npm install
+npm start
+```
 
-Route
+**Features:**
+- Angular 21 with standalone components
+- Server-Side Rendering (SSR)
+- Tailwind CSS 4.x
+- Vitest for testing
+- Auth guards and interceptors
+- RxJS for reactive state management
 
-Method
+---
 
-Description
+### Next.js Full-Stack Setup
 
-/api/auth/register
+```bash
+cd nextjs
+npm install
+npm run dev
+```
 
-POST
+**Features:**
+- Next.js 15 with App Router
+- SQLite database (auto-created)
+- Server Actions for mutations
+- API Routes for authentication
+- Full CRUD with inline editing
+- Optimistic UI updates
 
-Register a new user
+---
 
-/api/auth/login
+## 🔌 API Endpoints
 
-POST
+### Authentication Routes (All Backends)
 
-Login and get access & refresh tokens
+#### Register
+```http
+POST /api/auth/register
+Content-Type: application/json
 
-/api/auth/refresh
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!"
+}
+```
 
-POST
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGc..."
+}
+```
+*Sets `jid` HTTP-only cookie with refresh token*
 
-Get a new access token using refresh token
+---
 
-/api/auth/logout
+#### Login
+```http
+POST /api/auth/login
+Content-Type: application/json
 
-POST
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!"
+}
+```
 
-Logout and invalidate refresh token
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGc..."
+}
+```
 
-Protected routes require a valid **access token** in the `Authorization` header:
+---
 
-Authorization: Bearer <access\_token>
-    
+#### Refresh Token
+```http
+POST /api/auth/refresh
+Cookie: jid=<refresh_token>
+```
 
-### Frontend
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGc..."
+}
+```
+*New refresh token set in cookie*
 
-The frontend includes:
+---
 
-*   Registration and login forms
-*   Authentication context to manage tokens and user state
-*   Protected routes using React Router
-*   Automatic token refresh when access token expires
+#### Logout
+```http
+POST /api/auth/logout
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+  "message": "Logged out"
+}
+```
+
+---
+
+### Protected Routes Example
+
+#### Get Items
+```http
+GET /api/items
+Authorization: Bearer <access_token>
+```
+
+#### Create Item
+```http
+POST /api/items
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "name": "New Item"
+}
+```
+
+#### Delete Item
+```http
+DELETE /api/items/:id
+Authorization: Bearer <access_token>
+```
+
+---
+
+## 🏗️ Project Structure
+
+### Express Backend
+```
+express/
+├── src/
+│   ├── config/
+│   │   └── db.ts              # MongoDB connection with fallback
+│   ├── middleware/
+│   │   └── auth.ts            # JWT verification middleware
+│   ├── models/
+│   │   ├── user.ts            # User schema
+│   │   └── item.ts            # Item schema
+│   ├── routes/
+│   │   ├── authRoutes.ts      # Auth endpoints
+│   │   └── itemRoutes.ts      # CRUD endpoints
+│   └── index.ts               # App entry point
+├── .env.example
+├── package.json
+└── tsconfig.json
+```
+
+### NestJS Backend
+```
+nestjs/
+├── src/
+│   ├── auth/                  # Authentication module
+│   │   ├── decorators/
+│   │   ├── dto/
+│   │   ├── guards/
+│   │   ├── strategies/
+│   │   ├── auth.controller.ts
+│   │   └── auth.service.ts
+│   ├── items/                 # Items CRUD module
+│   ├── users/                 # Users module
+│   ├── prisma/                # Prisma ORM module
+│   ├── app.module.ts
+│   └── main.ts
+├── prisma/
+│   └── schema.prisma          # Database schema
+├── .env.example
+└── package.json
+```
+
+### React Frontend
+```
+react/
+├── src/
+│   ├── components/
+│   ├── contexts/
+│   │   └── AuthContext.tsx    # Auth state management
+│   ├── pages/
+│   │   ├── Login.tsx
+│   │   ├── Register.tsx
+│   │   └── Dashboard.tsx
+│   ├── App.tsx
+│   └── main.tsx
+├── package.json
+└── vite.config.ts
+```
+
+### Angular Frontend
+```
+angular/
+├── src/
+│   ├── app/
+│   │   ├── auth/              # Auth module
+│   │   ├── guards/            # Route guards
+│   │   ├── interceptors/      # HTTP interceptors
+│   │   └── services/          # API services
+│   └── main.ts
+├── angular.json
+└── package.json
+```
+
+### Next.js Full-Stack
+```
+nextjs/
+├── app/
+│   ├── api/
+│   │   ├── auth/              # Auth API routes
+│   │   └── items/             # Items API routes
+│   ├── login/
+│   ├── register/
+│   ├── dashboard/
+│   └── layout.tsx
+├── .data/
+│   └── database.db            # SQLite (auto-created)
+└── package.json
+```
+
+---
+
+## 🎓 Use Cases
+
+This template collection is perfect for:
+
+- ✅ **Hackathons** - Skip auth setup, focus on features
+- ✅ **MVPs & Prototypes** - Production-ready patterns from day one
+- ✅ **Learning Projects** - Study different stack architectures
+- ✅ **Interview Assignments** - Professional boilerplate
+- ✅ **Freelance Projects** - Quick project kickstart
+- ✅ **Teaching** - Demonstrate full-stack concepts
+
+---
+
+## 🤝 Stack Comparison
+
+| Aspect | React + Express | Angular + NestJS | Next.js |
+|--------|----------------|------------------|---------|
+| **Type Safety** | Good | Excellent | Excellent |
+| **Learning Curve** | Low | High | Medium |
+| **Scalability** | Medium | High | High |
+| **Deployment** | Separate | Separate | Unified |
+| **Best For** | Startups, MVPs | Enterprise | Serverless |
+| **Database** | MongoDB | PostgreSQL | SQLite |
+| **Bundle Size** | Small | Large | Medium |
+
+---
+
+## 🔧 Environment Variables Reference
+
+### Express
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `MONGO_URI` | No | In-memory | MongoDB connection string |
+| `PORT` | No | 5000 | Server port |
+| `ACCESS_TOKEN_SECRET` | Yes | - | JWT access token secret |
+| `REFRESH_TOKEN_SECRET` | Yes | - | JWT refresh token secret |
+| `ACCESS_TOKEN_EXPIRY` | No | 15m | Access token expiration |
+| `REFRESH_TOKEN_EXPIRY` | No | 7d | Refresh token expiration |
+| `FRONTEND_URL` | No | localhost:5173 | CORS origin |
+
+### NestJS
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | Yes | - | PostgreSQL connection string |
+| `PORT` | No | 5000 | Server port |
+| `NODE_ENV` | No | development | Environment |
+| `ACCESS_TOKEN_SECRET` | Yes | - | JWT access token secret |
+| `REFRESH_TOKEN_SECRET` | Yes | - | JWT refresh token secret |
+| `ACCESS_TOKEN_EXPIRY` | No | 15m | Access token expiration |
+| `REFRESH_TOKEN_EXPIRY` | No | 7d | Refresh token expiration |
+| `FRONTEND_URL` | No | localhost:4200 | CORS origin |
+
+---
+
+## 📝 License
+
+This is a template repository - use it freely for your projects!
+
+## 🌟 Contributing
+
+This is a personal template collection, but suggestions are welcome! Open an issue to discuss improvements.
+
+## 📞 Support
+
+For questions or issues:
+- Check the individual README files in each template folder
+- Review the `.env.example` files for configuration
+- Open an issue on GitHub
+
+---
+
+**Happy Building! 🚀**
