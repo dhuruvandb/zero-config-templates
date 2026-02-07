@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 
-const API_BASE = 'http://localhost:5000';
+// Use globalThis for environment variable or fallback to localhost
+const API_BASE = (globalThis as any).API_BASE_URL || 'http://localhost:5000';
 
 @Injectable({
   providedIn: 'root',

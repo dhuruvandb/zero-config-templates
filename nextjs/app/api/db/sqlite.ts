@@ -6,9 +6,24 @@ import bcrypt from "bcrypt";
 const dbPath = path.join(process.cwd(), ".data", "app.db");
 
 let db: Database | null = null;
+let isInitializing = false;
 
 export function getDb(): Database {
-  if (!db) {
+  if (db) {
+    return db;
+  }
+
+  // Wait if another request is initializing
+  while (isInitializing) {
+    // Simple spin-wait (not ideal but works for SQLite)
+  }
+
+  if (db) {
+    return db;
+  }
+
+  isInitializing = true;
+  try {
     // Create .data directory if it doesn't exist
     const dataDir = path.dirname(dbPath);
     if (!fs.existsSync(dataDir)) {
@@ -19,7 +34,10 @@ export function getDb(): Database {
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
     initializeDatabase();
+  } finally {
+    isInitializing = false;
   }
+  
   return db;
 }
 

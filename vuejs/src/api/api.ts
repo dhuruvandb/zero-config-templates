@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000'
 
 async function parseJson(res: Response) {
   const contentType = res.headers.get('content-type') || ''

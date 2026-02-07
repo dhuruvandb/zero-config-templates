@@ -1,12 +1,14 @@
 import { Router, Request, Response } from "express";
 import Item from "../models/item";
+import mongoose from "mongoose";
+import { AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
-// GET all items
-router.get("/", async (_req: Request, res: Response) => {
+// GET all items for the authenticated user
+router.get("/", async (req: AuthRequest, res: Response) => {
   try {
-    const items = await Item.find();
+    const items = await Item.find({ userId: req.userId });
     res.json(items);
   } catch (error) {
     console.error(error);
@@ -15,9 +17,12 @@ router.get("/", async (_req: Request, res: Response) => {
 });
 
 // POST a new item
-router.post("/", async (req: Request, res: Response) => {
+router.post("/", async (req: AuthRequest, res: Response) => {
   try {
-    const item = new Item(req.body);
+    const item = new Item({ 
+      name: req.body.name,
+      userId: req.userId 
+    });
     await item.save();
     res.status(201).json(item);
   } catch (error) {
@@ -27,9 +32,17 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 // DELETE an item by ID
-router.delete("/:id", async (req: Request, res: Response) => {
+router.delete("/:id", async (req: AuthRequest, res: Response) => {
   try {
-    const deletedItem = await Item.findByIdAndDelete(req.params.id);
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
+
+    const deletedItem = await Item.findOneAndDelete({ 
+      _id: req.params.id,
+      userId: req.userId // Ensure user can only delete their own items
+    });
     if (!deletedItem) {
       return res.status(404).json({ message: "Item not found" });
     }
