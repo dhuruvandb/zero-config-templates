@@ -6,37 +6,23 @@ import bcrypt from "bcrypt";
 const dbPath = path.join(process.cwd(), ".data", "app.db");
 
 let db: Database | null = null;
-let isInitializing = false;
 
 export function getDb(): Database {
   if (db) {
     return db;
   }
 
-  // Wait if another request is initializing
-  while (isInitializing) {
-    // Simple spin-wait (not ideal but works for SQLite)
+  // Create .data directory if it doesn't exist
+  const dataDir = path.dirname(dbPath);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
   }
-
-  if (db) {
-    return db;
-  }
-
-  isInitializing = true;
-  try {
-    // Create .data directory if it doesn't exist
-    const dataDir = path.dirname(dbPath);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-    
-    db = new Database(dbPath);
-    db.pragma("journal_mode = WAL");
-    db.pragma("foreign_keys = ON");
-    initializeDatabase();
-  } finally {
-    isInitializing = false;
-  }
+  
+  // Initialize database - SQLite handles concurrent access internally with WAL mode
+  db = new Database(dbPath);
+  db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
+  initializeDatabase();
   
   return db;
 }

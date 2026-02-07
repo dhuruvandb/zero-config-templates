@@ -41,8 +41,9 @@ export default async function connectDB() {
           await realCollection.insertMany(docs);
         }
 
-        // Close the realDb connection
+        // Close the realDb connection before switching
         await realDb.close();
+        realDb = undefined;
 
         // Disconnect in-memory and reconnect mongoose to real DB
         await mongoose.disconnect();
@@ -51,7 +52,7 @@ export default async function connectDB() {
         console.log("Switched mongoose to real MongoDB successfully");
       } catch (err: any) {
         console.error("Migration failed:", err.message);
-      } finally {
+        // Close connection on error if it was opened
         if (realDb) {
           await realDb.close();
         }
