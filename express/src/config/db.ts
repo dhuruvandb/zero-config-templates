@@ -24,11 +24,11 @@ export default async function connectDB() {
   // Optional: Migrate to real MongoDB if it becomes available
   if (process.env.MONGO_URI) {
     setTimeout(async () => {
-      let realDb;
+      let migrationConnection;
       try {
         console.log("Migrating data from in-memory to real MongoDB...");
         const realUri = process.env.MONGO_URI!;
-        realDb = await mongoose.createConnection(realUri);
+        migrationConnection = await mongoose.createConnection(realUri);
 
         const inMemoryDb = mongoose.connection.db;
         const collections = await inMemoryDb.listCollections().toArray();
@@ -37,13 +37,13 @@ export default async function connectDB() {
           const docs = await inMemoryDb.collection(name).find().toArray();
           if (docs.length === 0) continue;
 
-          const realCollection = realDb.db.collection(name);
+          const realCollection = migrationConnection.db.collection(name);
           await realCollection.insertMany(docs);
         }
 
-        // Close the realDb connection before switching
-        await realDb.close();
-        realDb = undefined;
+        // Close the migration connection before switching
+        await migrationConnection.close();
+        migrationConnection = undefined;
 
         // Disconnect in-memory and reconnect mongoose to real DB
         await mongoose.disconnect();
@@ -53,8 +53,8 @@ export default async function connectDB() {
       } catch (err: any) {
         console.error("Migration failed:", err.message);
         // Close connection on error if it was opened
-        if (realDb) {
-          await realDb.close();
+        if (migrationConnection) {
+          await migrationConnection.close();
         }
       }
     }, 5000);
