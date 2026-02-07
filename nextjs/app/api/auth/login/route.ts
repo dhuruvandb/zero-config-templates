@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findUserByEmailPassword } from "../../db/sqlite";
+import { validateUserCredentials } from "../../db/sqlite";
+import { generateAccessToken } from "../../utils/jwt";
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
 
-    // Find user from database
-    const user = findUserByEmailPassword(email, password);
+    // Validate user credentials from database
+    const user = await validateUserCredentials(email, password);
 
     if (!user) {
       return NextResponse.json(
@@ -15,13 +16,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate a simple token with user ID (in production, use JWT)
-    const accessToken = Buffer.from(`${user.id}:${Date.now()}`).toString(
-      "base64"
-    );
+    // Generate JWT access token
+    const accessToken = generateAccessToken(user.id);
 
     return NextResponse.json({ accessToken });
   } catch (error) {
+    console.error("Login error:", error);
     return NextResponse.json(
       { message: "Login failed" },
       { status: 500 }

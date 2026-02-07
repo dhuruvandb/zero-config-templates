@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteItem, updateItem, getUserIdByEmail } from "../../db/sqlite";
+import { deleteItem, updateItem } from "../../db/sqlite";
+import { verifyAccessToken } from "../../utils/jwt";
 
 interface Item {
   _id: string;
@@ -7,16 +8,9 @@ interface Item {
   userId: string;
 }
 
-// Helper to extract user ID from token
+// Helper to extract user ID from JWT token
 function getUserIdFromToken(token: string): string | null {
-  try {
-    const decoded = Buffer.from(token.replace("Bearer ", ""), "base64").toString(
-      "utf-8"
-    );
-    return decoded.split(":")[0]; // Returns the user ID or email
-  } catch {
-    return null;
-  }
+  return verifyAccessToken(token.replace("Bearer ", ""));
 }
 
 export async function DELETE(
@@ -34,18 +28,8 @@ export async function DELETE(
     return NextResponse.json({ message: "Invalid token" }, { status: 401 });
   }
 
-  // If token contains email (old tokens), look up the user ID
-  let actualUserId = userId;
-  if (userId.includes("@")) {
-    const resolvedId = getUserIdByEmail(userId);
-    if (!resolvedId) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-    }
-    actualUserId = resolvedId;
-  }
-
   const { id } = await params;
-  const deleted = deleteItem(id, actualUserId);
+  const deleted = deleteItem(id, userId);
 
   if (!deleted) {
     return NextResponse.json({ message: "Item not found" }, { status: 404 });
@@ -69,16 +53,6 @@ export async function PUT(
     return NextResponse.json({ message: "Invalid token" }, { status: 401 });
   }
 
-  // If token contains email (old tokens), look up the user ID
-  let actualUserId = userId;
-  if (userId.includes("@")) {
-    const resolvedId = getUserIdByEmail(userId);
-    if (!resolvedId) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-    }
-    actualUserId = resolvedId;
-  }
-
   const { id } = await params;
   const { name } = await request.json();
 
@@ -89,11 +63,11 @@ export async function PUT(
     );
   }
 
-  const updated = updateItem(id, actualUserId, name.trim());
+  const updated = updateItem(id, userId, name.trim());
 
   if (!updated) {
     return NextResponse.json({ message: "Item not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ _id: id, name: name.trim(), userId: actualUserId });
+  return NextResponse.json({ _id: id, name: name.trim(), userId });
 }

@@ -1,12 +1,13 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
+import bcrypt from "bcrypt";
 
 const dbPath = path.join(process.cwd(), ".data", "app.db");
 
-let db: any = null;
+let db: Database | null = null;
 
-export function getDb() {
+export function getDb(): Database {
   if (!db) {
     // Create .data directory if it doesn't exist
     const dataDir = path.dirname(dbPath);
@@ -48,10 +49,17 @@ export function initializeDatabase() {
 }
 
 // User operations
-export function findUserByEmailPassword(email: string, password: string) {
+export async function validateUserCredentials(email: string, password: string) {
   const db = getDb();
-  const stmt = db.prepare("SELECT * FROM users WHERE email = ? AND password = ?");
-  return stmt.get(email, password);
+  const stmt = db.prepare("SELECT * FROM users WHERE email = ?");
+  const user = stmt.get(email) as { id: string; email: string; password: string } | undefined;
+  
+  if (!user) {
+    return null;
+  }
+  
+  const isValid = await bcrypt.compare(password, user.password);
+  return isValid ? user : null;
 }
 
 export function userExists(email: string) {
@@ -67,12 +75,14 @@ export function getUserIdByEmail(email: string) {
   return user ? user.id : null;
 }
 
-export function createUser(email: string, password: string) {
+export async function createUser(email: string, password: string) {
   const db = getDb();
   const id = Date.now().toString();
+  const hashedPassword = await bcrypt.hash(password, 10);
+  
   try {
     const stmt = db.prepare("INSERT INTO users (id, email, password) VALUES (?, ?, ?)");
-    stmt.run(id, email, password);
+    stmt.run(id, email, hashedPassword);
     return { id, email };
   } catch (error) {
     console.error("Error creating user:", error);

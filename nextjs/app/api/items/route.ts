@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getItemsByUserId, createItem, getUserIdByEmail } from "../db/sqlite";
+import { getItemsByUserId, createItem } from "../db/sqlite";
+import { verifyAccessToken } from "../utils/jwt";
 
 interface Item {
   _id: string;
@@ -7,16 +8,9 @@ interface Item {
   userId: string;
 }
 
-// Helper to extract user ID from token
+// Helper to extract user ID from JWT token
 function getUserIdFromToken(token: string): string | null {
-  try {
-    const decoded = Buffer.from(token.replace("Bearer ", ""), "base64").toString(
-      "utf-8"
-    );
-    return decoded.split(":")[0]; // Returns the user ID or email
-  } catch {
-    return null;
-  }
+  return verifyAccessToken(token.replace("Bearer ", ""));
 }
 
 export async function GET(request: NextRequest) {
@@ -26,21 +20,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  let userId = getUserIdFromToken(authHeader);
+  const userId = getUserIdFromToken(authHeader);
   if (!userId) {
     return NextResponse.json({ message: "Invalid token" }, { status: 401 });
   }
 
-  // If token contains email (old tokens), look up the user ID
-  if (userId.includes("@")) {
-    const actualUserId = getUserIdByEmail(userId);
-    if (!actualUserId) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-    }
-    userId = actualUserId;
-  }
-
-  const userItems = getItemsByUserId(userId as string);
+  const userItems = getItemsByUserId(userId);
   return NextResponse.json(userItems);
 }
 
@@ -51,23 +36,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  let userId = getUserIdFromToken(authHeader);
+  const userId = getUserIdFromToken(authHeader);
   
   if (!userId) {
     return NextResponse.json({ message: "Invalid token" }, { status: 401 });
   }
 
-  // If token contains email (old tokens), look up the user ID
-  if (userId.includes("@")) {
-    const actualUserId = getUserIdByEmail(userId);
-    if (!actualUserId) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-    }
-    userId = actualUserId;
-  }
-
   const { name } = await request.json();
 
-  const newItem = createItem(userId as string, name);
+  const newItem = createItem(userId, name);
   return NextResponse.json(newItem);
 }
