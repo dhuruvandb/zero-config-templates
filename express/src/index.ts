@@ -9,6 +9,24 @@ import { authenticateToken } from "./middleware/auth";
 
 dotenv.config();
 
+// Validate required environment variables
+function validateEnvironment() {
+  const required = ["ACCESS_TOKEN_SECRET", "REFRESH_TOKEN_SECRET"];
+  const missing = required.filter((key) => !process.env[key]);
+
+  if (missing.length > 0) {
+    console.error(
+      `Missing required environment variables: ${missing.join(", ")}`
+    );
+    console.error(
+      'Generate secrets with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"'
+    );
+    process.exit(1);
+  }
+}
+
+validateEnvironment();
+
 const app = express();
 app.use(
   cors({

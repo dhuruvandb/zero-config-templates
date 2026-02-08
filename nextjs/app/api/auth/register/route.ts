@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { userExists, createUser } from "../../db/sqlite";
+import { generateAccessToken } from "../../utils/jwt";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,13 +14,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user in database
-    const user = createUser(email, password);
+    // Create user in database with hashed password
+    const user = await createUser(email, password);
 
-    // Generate a simple token with user ID (in production, use JWT)
-    const accessToken = Buffer.from(`${user.id}:${Date.now()}`).toString(
-      "base64"
-    );
+    // Generate JWT access token
+    const accessToken = generateAccessToken(user.id);
 
     return NextResponse.json({ accessToken });
   } catch (error) {
