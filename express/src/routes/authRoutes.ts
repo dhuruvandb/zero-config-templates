@@ -1,44 +1,18 @@
 import { Router, Request, Response } from "express";
-import User from "../models/user";
-import bcrypt from "bcrypt";
-import jwt, { SignOptions } from "jsonwebtoken";
-import dotenv from "dotenv";
 import { body, validationResult } from "express-validator";
-
-dotenv.config();
+import {
+  registerUser,
+  loginUser,
+  refreshUserToken,
+  logoutUser,
+} from "../services/auth.service";
 
 const router = Router();
-
-// Load secrets from env
-const ACCESS_TOKEN_SECRET: string = process.env.ACCESS_TOKEN_SECRET!;
-const REFRESH_TOKEN_SECRET: string = process.env.REFRESH_TOKEN_SECRET!;
-const ACCESS_TOKEN_EXPIRY = (process.env.ACCESS_TOKEN_EXPIRY ||
-  "15m") as `${number}${"s" | "m" | "h" | "d"}`;
-const REFRESH_TOKEN_EXPIRY = (process.env.REFRESH_TOKEN_EXPIRY ||
-  "7d") as `${number}${"s" | "m" | "h" | "d"}`;
-
-interface TokenPayload {
-  userId: string;
-}
-
-// JWT options
-const accessTokenOptions: SignOptions = { expiresIn: ACCESS_TOKEN_EXPIRY };
-const refreshTokenOptions: SignOptions = { expiresIn: REFRESH_TOKEN_EXPIRY };
-
-// Helper to generate tokens
-function generateAccessToken(userId: string): string {
-  return jwt.sign({ userId }, ACCESS_TOKEN_SECRET, accessTokenOptions);
-}
-
-function generateRefreshToken(userId: string): string {
-  return jwt.sign({ userId }, REFRESH_TOKEN_SECRET, refreshTokenOptions);
-}
 
 // Registration route
 router.post(
   "/register",
   body("email").isEmail().withMessage("Please provide a valid email address"),
-
   body("password")
     .isLength({ min: 8 })
     .withMessage("Password must be at least 8 characters long")
@@ -48,9 +22,8 @@ router.post(
     .withMessage("Password must contain at least one lowercase letter")
     .matches(/[0-9]/)
     .withMessage("Password must contain at least one number")
-    .matches(/[!@#$%^&*(),.?\":{}|<>]/)
+    .matches(/[!@#$%^&*(),.?":{}|<>]/)
     .withMessage("Password must contain at least one special character"),
-
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -60,22 +33,7 @@ router.post(
     const { email, password } = req.body;
 
     try {
-      const existing = await User.findOne({ email });
-      if (existing) {
-        return res.status(400).json({ message: "User already exists" });
-      }
-
-      const hashed = await bcrypt.hash(password, 10);
-
-      const newUser = new User({ email, password: hashed });
-      await newUser.save();
-
-      const accessToken = generateAccessToken(newUser._id.toString());
-      const refreshToken = generateRefreshToken(newUser._id.toString());
-
-      newUser.refreshTokens!.push(refreshToken);
-      await newUser.save();
-
+      const { accessToken, refreshToken } = await registerUser(email, password);
       res
         .cookie("jid", refreshToken, {
           httpOnly: true,
@@ -85,9 +43,9 @@ router.post(
           maxAge: 1000 * 60 * 60 * 24 * 7,
         })
         .json({ accessToken });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Register error", err);
-      res.status(500).json({ message: "Internal server error" });
+      res.status(400).json({ message: err.message });
     }
   }
 );
@@ -105,22 +63,7 @@ router.post(
 
     const { email, password } = req.body;
     try {
-      const user = await User.findOne({ email });
-      if (!user) {
-        return res.status(400).json({ message: "Invalid credentials" });
-      }
-
-      const valid = await bcrypt.compare(password, user.password);
-      if (!valid) {
-        return res.status(400).json({ message: "Invalid credentials" });
-      }
-
-      const accessToken = generateAccessToken(user._id.toString());
-      const refreshToken = generateRefreshToken(user._id.toString());
-
-      user.refreshTokens!.push(refreshToken);
-      await user.save();
-
+      const { accessToken, refreshToken } = await loginUser(email, password);
       res
         .cookie("jid", refreshToken, {
           httpOnly: true,
@@ -130,9 +73,9 @@ router.post(
           maxAge: 1000 * 60 * 60 * 24 * 7,
         })
         .json({ accessToken });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login error", err);
-      res.status(500).json({ message: "Internal server error" });
+      res.status(400).json({ message: err.message });
     }
   }
 );
@@ -142,52 +85,28 @@ router.post("/refresh", async (req: Request, res: Response) => {
   const token = req.cookies.jid;
   if (!token) return res.status(401).json({ message: "No token provided" });
 
-  let payload: TokenPayload;
   try {
-    payload = jwt.verify(token, REFRESH_TOKEN_SECRET) as TokenPayload;
-  } catch {
-    return res.status(401).json({ message: "Invalid refresh token" });
+    const { accessToken, refreshToken } = await refreshUserToken(token);
+    res
+      .cookie("jid", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/api/auth/refresh",
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+      })
+      .json({ accessToken });
+  } catch (err: any) {
+    console.error("Refresh error", err);
+    res.status(401).json({ message: err.message });
   }
-
-  const user = await User.findById(payload.userId);
-  if (!user) return res.status(401).json({ message: "User not found" });
-
-  if (!user.refreshTokens!.includes(token)) {
-    return res.status(401).json({ message: "Refresh token revoked" });
-  }
-
-  const newAccessToken = generateAccessToken(user._id.toString());
-  const newRefreshToken = generateRefreshToken(user._id.toString());
-
-  user.refreshTokens = user.refreshTokens!.filter((t) => t !== token);
-  user.refreshTokens.push(newRefreshToken);
-  await user.save();
-
-  res
-    .cookie("jid", newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/api/auth/refresh",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    })
-    .json({ accessToken: newAccessToken });
 });
 
 // Logout endpoint
 router.post("/logout", async (req: Request, res: Response) => {
   const token = req.cookies.jid;
   if (token) {
-    try {
-      const payload = jwt.verify(token, REFRESH_TOKEN_SECRET) as TokenPayload;
-      const user = await User.findById(payload.userId);
-      if (user) {
-        user.refreshTokens = user.refreshTokens!.filter((t) => t !== token);
-        await user.save();
-      }
-    } catch (err) {
-      console.warn("Logout: invalid token", err);
-    }
+    await logoutUser(token);
   }
 
   res.clearCookie("jid", { path: "/api/auth/refresh" });

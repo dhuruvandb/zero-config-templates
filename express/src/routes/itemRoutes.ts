@@ -1,12 +1,12 @@
 import { Router, Request, Response } from "express";
-import Item from "../models/item";
+import { getAllItems, createItem, deleteItem } from "../services/item.service";
 
 const router = Router();
 
 // GET all items
 router.get("/", async (_req: Request, res: Response) => {
   try {
-    const items = await Item.find();
+    const items = await getAllItems();
     res.json(items);
   } catch (error) {
     console.error(error);
@@ -17,8 +17,8 @@ router.get("/", async (_req: Request, res: Response) => {
 // POST a new item
 router.post("/", async (req: Request, res: Response) => {
   try {
-    const item = new Item(req.body);
-    await item.save();
+    const { name } = req.body;
+    const item = await createItem(name);
     res.status(201).json(item);
   } catch (error) {
     console.error(error);
@@ -29,12 +29,12 @@ router.post("/", async (req: Request, res: Response) => {
 // DELETE an item by ID
 router.delete("/:id", async (req: Request, res: Response) => {
   try {
-    const deletedItem = await Item.findByIdAndDelete(req.params.id);
-    if (!deletedItem) {
+    await deleteItem(req.params.id);
+    res.json({ message: "Deleted" });
+  } catch (error: any) {
+    if (error.message === "Item not found") {
       return res.status(404).json({ message: "Item not found" });
     }
-    res.json({ message: "Deleted" });
-  } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
   }
