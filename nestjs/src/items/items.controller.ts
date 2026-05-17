@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Delete,
   Body,
   Param,
@@ -11,7 +12,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ItemsService } from './items.service';
-import { CreateItemDto } from './dto/item.dto';
+import { CreateItemDto, UpdateItemDto } from './dto/item.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { Item } from '../types/prisma.types';
@@ -19,7 +20,7 @@ import type { Item } from '../types/prisma.types';
 @Controller('api/items')
 @UseGuards(JwtAuthGuard)
 export class ItemsController {
-  constructor(private readonly itemsService: ItemsService) {}
+  constructor(private readonly itemsService: ItemsService) { }
 
   @Get()
   async findAll(@GetUser('id') userId: string): Promise<Item[]> {
@@ -32,6 +33,15 @@ export class ItemsController {
     @GetUser('id') userId: string,
   ): Promise<Item> {
     return this.itemsService.create(createItemDto, userId);
+  }
+
+  @Put(':id')
+  async update(
+    @Param('id') id: string,
+    @Body(ValidationPipe) updateItemDto: UpdateItemDto,
+    @GetUser('id') userId: string,
+  ): Promise<Item> {
+    return this.itemsService.update(id, updateItemDto);
   }
 
   @Delete(':id')

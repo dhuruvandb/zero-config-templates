@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getAllItems, createItem, deleteItem } from "../services/item.service";
+import { getAllItems, createItem, deleteItem, updateItem } from "../services/item.service";
 
 const router = Router();
 
@@ -21,6 +21,21 @@ router.post("/", async (req: Request, res: Response) => {
     const item = await createItem(name);
     res.status(201).json(item);
   } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// UPDATE an item by ID
+router.put("/:id", async (req: Request, res: Response) => {
+  try {
+    const { name } = req.body;
+    const item = await updateItem(req.params.id, name);
+    res.json(item);
+  } catch (error: any) {
+    if (error.message === "Item not found") {
+      return res.status(404).json({ message: "Item not found" });
+    }
     console.error(error);
     res.status(500).json({ message: "Server Error" });
   }

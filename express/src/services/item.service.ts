@@ -10,6 +10,17 @@ export async function createItem(name: string) {
     });
 }
 
+export async function updateItem(id: string, name: string) {
+    const existing = await prisma.item.findUnique({ where: { id } });
+    if (!existing) {
+        throw new Error("Item not found");
+    }
+    return prisma.item.update({
+        where: { id },
+        data: { name },
+    });
+}
+
 export async function deleteItem(id: string) {
     const existing = await prisma.item.findUnique({ where: { id } });
     if (!existing) {

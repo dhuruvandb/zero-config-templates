@@ -1,31 +1,8 @@
-import Fastify from 'fastify';
-import cors from '@fastify/cors';
-import authPlugin from './plugins/auth';
-import authRoutes from './routes/auth.routes';
-import itemRoutes from './routes/item.routes';
+import { buildApp } from './app';
 import { config } from './config';
 
 async function main() {
-    const app = Fastify({
-        logger: config.nodeEnv !== 'test',
-    });
-
-    // Register plugins
-    await app.register(cors, {
-        origin: config.frontendUrl,
-        credentials: true,
-    });
-
-    await app.register(authPlugin);
-
-    // Register routes
-    await app.register(authRoutes);
-    await app.register(itemRoutes);
-
-    // Health check
-    app.get('/api/health', async () => {
-        return { status: 'ok', timestamp: new Date().toISOString() };
-    });
+    const app = await buildApp();
 
     // Start server
     try {

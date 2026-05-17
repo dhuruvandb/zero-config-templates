@@ -18,6 +18,21 @@ export class ItemService {
         });
     }
 
+    async update(id: string, userId: string, name: string): Promise<Item | null> {
+        const existing = await prisma.item.findFirst({
+            where: { id, userId },
+        });
+
+        if (!existing) {
+            return null;
+        }
+
+        return prisma.item.update({
+            where: { id },
+            data: { name },
+        });
+    }
+
     async delete(id: string, userId: string): Promise<void> {
         await prisma.item.deleteMany({
             where: { id, userId },
