@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt, { SignOptions } from "jsonwebtoken";
 import dotenv from "dotenv";
 import prisma from "../lib/prisma";
@@ -27,6 +27,15 @@ function generateRefreshToken(userId: string): string {
     return jwt.sign({ userId }, REFRESH_TOKEN_SECRET, refreshTokenOptions);
 }
 
+/**
+ * Normalise refreshTokens from the database to always be a string array.
+ * PostgreSQL natively returns String[], while SQLite returns a JSON string.
+ */
+function getRefreshTokens(user: { refreshTokens: string | string[] }): string[] {
+    if (Array.isArray(user.refreshTokens)) return user.refreshTokens;
+    try { return JSON.parse(user.refreshTokens); } catch { return []; }
+}
+
 export async function registerUser(email: string, password: string) {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -39,7 +48,7 @@ export async function registerUser(email: string, password: string) {
         data: {
             email,
             password: hashed,
-            refreshTokens: [refreshToken],
+            refreshTokens: JSON.stringify([refreshToken]),
         },
     });
 
@@ -48,7 +57,7 @@ export async function registerUser(email: string, password: string) {
 
     await prisma.user.update({
         where: { id: user.id },
-        data: { refreshTokens: [newRefreshToken] },
+        data: { refreshTokens: JSON.stringify([newRefreshToken]) },
     });
 
     return { accessToken, refreshToken: newRefreshToken };
@@ -70,7 +79,7 @@ export async function loginUser(email: string, password: string) {
 
     await prisma.user.update({
         where: { id: user.id },
-        data: { refreshTokens: [...user.refreshTokens, refreshToken] },
+        data: { refreshTokens: JSON.stringify([...getRefreshTokens(user), refreshToken]) },
     });
 
     return { accessToken, refreshToken };
@@ -89,7 +98,7 @@ export async function refreshUserToken(token: string) {
         throw new Error("User not found");
     }
 
-    if (!user.refreshTokens.includes(token)) {
+    if (!getRefreshTokens(user).includes(token)) {
         throw new Error("Refresh token revoked");
     }
 
@@ -99,10 +108,10 @@ export async function refreshUserToken(token: string) {
     await prisma.user.update({
         where: { id: user.id },
         data: {
-            refreshTokens: [
-                ...user.refreshTokens.filter((t) => t !== token),
+            refreshTokens: JSON.stringify([
+                ...getRefreshTokens(user).filter((t) => t !== token),
                 newRefreshToken,
-            ],
+            ]),
         },
     });
 
@@ -117,7 +126,7 @@ export async function logoutUser(token: string) {
             await prisma.user.update({
                 where: { id: user.id },
                 data: {
-                    refreshTokens: user.refreshTokens.filter((t) => t !== token),
+                    refreshTokens: JSON.stringify(getRefreshTokens(user).filter((t) => t !== token)),
                 },
             });
         }

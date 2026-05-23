@@ -3,21 +3,35 @@ import * as path from "path";
 import * as fs from "fs";
 import request from "supertest";
 
-// Push test DB schema before importing app
-const testDbPath = path.join(__dirname, "..", ".test-data", "test.db");
-const testDbDir = path.dirname(testDbPath);
+const testDbDir = process.env.TEST_DB_DIR || path.resolve(__dirname, "..", ".test-data");
 if (!fs.existsSync(testDbDir)) {
     fs.mkdirSync(testDbDir, { recursive: true });
+}
+
+// Unique DB per test file — avoids EBUSY when test files run sequentially
+const testDbPath = path.join(testDbDir, "items-test.db");
+const testDbUrl = `file:${testDbPath}`;
+
+// Point Prisma client to our test DB before importing the app
+process.env.DATABASE_URL = testDbUrl;
+
+// Remove stale DB from a previous test run
+if (fs.existsSync(testDbPath)) {
+    try { fs.unlinkSync(testDbPath); } catch { /* ignore EBUSY */ }
 }
 
 execSync(
     `npx prisma db push --schema=prisma/schema.test.prisma --accept-data-loss`,
     {
         cwd: path.join(__dirname, ".."),
-        env: { ...process.env, DATABASE_URL: `file:${testDbPath}` },
+        env: { ...process.env, DATABASE_URL: testDbUrl },
         stdio: "pipe",
     }
 );
+
+// Clear Prisma module cache so it reconnects to our test DB
+const prismaModule = require.resolve("../src/lib/prisma");
+delete require.cache[prismaModule];
 
 import app from "../src/app";
 

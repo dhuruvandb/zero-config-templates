@@ -7,6 +7,8 @@ const config: Config = {
     testMatch: ["**/*.test.ts"],
     setupFiles: ["<rootDir>/__tests__/setup.ts"],
     testTimeout: 15000,
+    // Run tests serially — test files share a SQLite database
+    maxWorkers: 1,
 };
 
 export default config;

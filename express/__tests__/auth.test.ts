@@ -3,18 +3,28 @@ import * as path from "path";
 import * as fs from "fs";
 import request from "supertest";
 
-// Push test DB schema before importing app (which creates Prisma client)
-const testDbPath = path.join(__dirname, "..", ".test-data", "test.db");
-const testDbDir = path.dirname(testDbPath);
+const testDbDir = process.env.TEST_DB_DIR || path.resolve(__dirname, "..", ".test-data");
 if (!fs.existsSync(testDbDir)) {
     fs.mkdirSync(testDbDir, { recursive: true });
+}
+
+// Unique DB per test file — avoids EBUSY when test files run sequentially
+const testDbPath = path.join(testDbDir, "auth-test.db");
+const testDbUrl = `file:${testDbPath}`;
+
+// Point Prisma client to our test DB before importing the app
+process.env.DATABASE_URL = testDbUrl;
+
+// Remove stale DB from a previous test run
+if (fs.existsSync(testDbPath)) {
+    try { fs.unlinkSync(testDbPath); } catch { /* ignore EBUSY */ }
 }
 
 execSync(
     `npx prisma db push --schema=prisma/schema.test.prisma --accept-data-loss`,
     {
         cwd: path.join(__dirname, ".."),
-        env: { ...process.env, DATABASE_URL: `file:${testDbPath}` },
+        env: { ...process.env, DATABASE_URL: testDbUrl },
         stdio: "pipe",
     }
 );
@@ -55,7 +65,9 @@ describe("Auth API", () => {
             // Should set refresh token cookie
             const cookies = res.headers["set-cookie"];
             expect(cookies).toBeDefined();
-            expect(cookies.some((c: string) => c.startsWith("jid="))).toBe(true);
+            // set-cookie can be string (single cookie) or string[] — normalize to array
+            const cookieList = Array.isArray(cookies) ? cookies : [cookies];
+            expect(cookieList.some((c: string) => c.startsWith("jid="))).toBe(true);
         });
 
         it("should reject duplicate email", async () => {
@@ -108,7 +120,9 @@ describe("Auth API", () => {
             expect(res.body).toHaveProperty("accessToken");
             const cookies = res.headers["set-cookie"];
             expect(cookies).toBeDefined();
-            expect(cookies.some((c: string) => c.startsWith("jid="))).toBe(true);
+            // set-cookie can be string (single cookie) or string[] — normalize to array
+            const cookieList = Array.isArray(cookies) ? cookies : [cookies];
+            expect(cookieList.some((c: string) => c.startsWith("jid="))).toBe(true);
         });
 
         it("should reject wrong password", async () => {
@@ -169,10 +183,11 @@ describe("Auth API", () => {
             // Login to get the refresh cookie
             const loginRes = await agent.post("/api/auth/login").send(testUser);
             const cookies = loginRes.headers["set-cookie"];
+            const cookieStr = Array.isArray(cookies) ? cookies.join("; ") : cookies;
 
             const res = await agent
                 .post("/api/auth/refresh")
-                .set("Cookie", cookies)
+                .set("Cookie", cookieStr)
                 .expect(200);
 
             expect(res.body).toHaveProperty("accessToken");
@@ -182,7 +197,8 @@ describe("Auth API", () => {
         });
 
         it("should reject without a refresh cookie", async () => {
-            await agent.post("/api/auth/refresh").expect(401);
+            // Use a fresh agent without any persisted cookies
+            await request(app).post("/api/auth/refresh").expect(401);
         });
     });
 
@@ -192,10 +208,11 @@ describe("Auth API", () => {
         it("should logout and clear cookie", async () => {
             const loginRes = await agent.post("/api/auth/login").send(testUser);
             const cookies = loginRes.headers["set-cookie"];
+            const cookieStr = Array.isArray(cookies) ? cookies.join("; ") : cookies;
 
             const res = await agent
                 .post("/api/auth/logout")
-                .set("Cookie", cookies)
+                .set("Cookie", cookieStr)
                 .expect(200);
 
             expect(res.body.message).toMatch(/logged out/i);
@@ -221,6 +238,7 @@ describe("Auth API", () => {
             expect(loginRes.status).toBe(200);
             let token = loginRes.body.accessToken;
             let cookies = loginRes.headers["set-cookie"];
+            let cookieStr = Array.isArray(cookies) ? cookies.join("; ") : cookies;
 
             // Access protected route
             const accessRes = await agent
@@ -231,10 +249,11 @@ describe("Auth API", () => {
             // Refresh
             const refreshRes = await agent
                 .post("/api/auth/refresh")
-                .set("Cookie", cookies);
+                .set("Cookie", cookieStr);
             expect(refreshRes.status).toBe(200);
             token = refreshRes.body.accessToken;
             cookies = refreshRes.headers["set-cookie"];
+            cookieStr = Array.isArray(cookies) ? cookies.join("; ") : cookies;
 
             // Access with new token
             const access2Res = await agent
@@ -245,7 +264,7 @@ describe("Auth API", () => {
             // Logout
             const logoutRes = await agent
                 .post("/api/auth/logout")
-                .set("Cookie", cookies);
+                .set("Cookie", cookieStr);
             expect(logoutRes.status).toBe(200);
         });
     });
