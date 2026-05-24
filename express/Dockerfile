@@ -21,14 +21,9 @@ COPY --from=builder /app/package-lock.json ./
 COPY --from=builder /app/prisma ./prisma
 
 # Single RUN: install prod deps, generate Prisma client
-# Deleting prisma/effect/fast-check here means they never occupy a layer
 RUN npm ci --omit=dev && \
-    npx prisma generate && \
-    rm -rf /app/node_modules/prisma \
-           /app/node_modules/effect \
-           /app/node_modules/fast-check \
-           /app/node_modules/@prisma/config \
-           /root/.npm /tmp/*
+    ./node_modules/.bin/prisma generate && \
+    rm -rf /root/.npm /tmp/*
 
 EXPOSE 5000
 CMD ["node", "dist/index.js"]
