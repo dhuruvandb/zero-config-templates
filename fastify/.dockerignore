@@ -4,5 +4,8 @@ dist
 .gitignore
 .env
 .env.local
+.env.*
 *.md
 __tests__
+coverage
+.vscode
