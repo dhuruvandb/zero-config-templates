@@ -2,6 +2,12 @@ import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma';
 import type { User, JwtPayload } from '../types';
 
+/** Normalise refreshTokens from the database to always be a string array. */
+function getRefreshTokens(user: { refreshTokens: string | string[] }): string[] {
+    if (Array.isArray(user.refreshTokens)) return user.refreshTokens;
+    try { return JSON.parse(user.refreshTokens); } catch { return []; }
+}
+
 export class AuthService {
     async register(email: string, password: string): Promise<User> {
         const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -15,7 +21,7 @@ export class AuthService {
             data: {
                 email,
                 password: hashedPassword,
-                refreshTokens: [],
+                refreshTokens: JSON.stringify([]),
             },
         });
     }
@@ -44,10 +50,11 @@ export class AuthService {
             throw new Error('User not found');
         }
 
+        const tokens = getRefreshTokens(user);
         return prisma.user.update({
             where: { id: userId },
             data: {
-                refreshTokens: [...user.refreshTokens, refreshToken],
+                refreshTokens: JSON.stringify([...tokens, refreshToken]),
             },
         });
     }
@@ -58,10 +65,11 @@ export class AuthService {
             throw new Error('User not found');
         }
 
+        const tokens = getRefreshTokens(user);
         return prisma.user.update({
             where: { id: userId },
             data: {
-                refreshTokens: user.refreshTokens.filter((t: string) => t !== refreshToken),
+                refreshTokens: JSON.stringify(tokens.filter((t: string) => t !== refreshToken)),
             },
         });
     }
@@ -76,12 +84,13 @@ export class AuthService {
             throw new Error('User not found');
         }
 
-        const filteredTokens = user.refreshTokens.filter((t: string) => t !== oldToken);
+        const tokens = getRefreshTokens(user);
+        const filteredTokens = tokens.filter((t: string) => t !== oldToken);
 
         return prisma.user.update({
             where: { id: userId },
             data: {
-                refreshTokens: [...filteredTokens, newToken],
+                refreshTokens: JSON.stringify([...filteredTokens, newToken]),
             },
         });
     }
@@ -92,7 +101,7 @@ export class AuthService {
             return false;
         }
 
-        return user.refreshTokens.includes(token);
+        return getRefreshTokens(user).includes(token);
     }
 
     async validateUser(userId: string): Promise<User> {

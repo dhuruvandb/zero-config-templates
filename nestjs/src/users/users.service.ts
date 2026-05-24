@@ -3,6 +3,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { User } from '../types/prisma.types';
 import * as bcrypt from 'bcryptjs';
 
+/** Normalise refreshTokens from the database to always be a string array. */
+function getRefreshTokens(user: { refreshTokens: string | string[] }): string[] {
+  if (Array.isArray(user.refreshTokens)) return user.refreshTokens;
+  try { return JSON.parse(user.refreshTokens); } catch { return []; }
+}
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -16,7 +22,7 @@ export class UsersService {
       data: {
         email,
         password: hashedPassword,
-        refreshTokens: [],
+        refreshTokens: JSON.stringify([]),
       },
     });
   }
@@ -42,10 +48,11 @@ export class UsersService {
       throw new Error('User not found');
     }
 
+    const tokens = getRefreshTokens(user);
     return this.prisma.user.update({
       where: { id: userId },
       data: {
-        refreshTokens: [...user.refreshTokens, refreshToken],
+        refreshTokens: JSON.stringify([...tokens, refreshToken]),
       },
     });
   }
@@ -62,12 +69,13 @@ export class UsersService {
       throw new Error('User not found');
     }
 
+    const tokens = getRefreshTokens(user);
     return this.prisma.user.update({
       where: { id: userId },
       data: {
-        refreshTokens: user.refreshTokens.filter(
+        refreshTokens: JSON.stringify(tokens.filter(
           (t: string) => t !== refreshToken,
-        ),
+        )),
       },
     });
   }
@@ -85,14 +93,15 @@ export class UsersService {
       throw new Error('User not found');
     }
 
-    const filteredTokens = user.refreshTokens.filter(
+    const tokens = getRefreshTokens(user);
+    const filteredTokens = tokens.filter(
       (t: string) => t !== oldToken,
     );
 
     return this.prisma.user.update({
       where: { id: userId },
       data: {
-        refreshTokens: [...filteredTokens, newToken],
+        refreshTokens: JSON.stringify([...filteredTokens, newToken]),
       },
     });
   }
@@ -106,7 +115,7 @@ export class UsersService {
       return false;
     }
 
-    return user.refreshTokens.includes(token);
+    return getRefreshTokens(user).includes(token);
   }
 
   async validatePassword(user: User, password: string): Promise<boolean> {

@@ -8,7 +8,7 @@ export interface User {
     id: string;
     email: string;
     password: string;
-    refreshTokens: string[];
+    refreshTokens: string;
     createdAt: Date;
     updatedAt: Date;
 }
