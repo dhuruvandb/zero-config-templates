@@ -14,7 +14,7 @@ export function Login({ switchToRegister }: { switchToRegister: () => void }) {
     try {
       await auth.login(email, password);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "Login failed");
     }
   };
 

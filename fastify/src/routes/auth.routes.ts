@@ -18,10 +18,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             const user = await authService.register(email, password);
 
             const accessToken = fastify.jwt.sign({ userId: user.id });
-            const refreshToken = fastify.jwt.sign(
-                { userId: user.id },
-                { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '7d', secret: process.env.REFRESH_TOKEN_SECRET },
-            );
+            const refreshToken = fastify.jwt.sign({ userId: user.id }, { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '7d' });
 
             await authService.addRefreshToken(user.id, refreshToken);
 
@@ -54,10 +51,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             const user = await authService.login(email, password);
 
             const accessToken = fastify.jwt.sign({ userId: user.id });
-            const refreshToken = fastify.jwt.sign(
-                { userId: user.id },
-                { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '7d', secret: process.env.REFRESH_TOKEN_SECRET },
-            );
+            const refreshToken = fastify.jwt.sign({ userId: user.id }, { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '7d' });
 
             await authService.addRefreshToken(user.id, refreshToken);
 
@@ -87,7 +81,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         }
 
         try {
-            const payload = fastify.jwt.verify(oldRefreshToken, { secret: process.env.REFRESH_TOKEN_SECRET }) as { userId: string };
+            const payload = fastify.jwt.verify(oldRefreshToken) as { userId: string };
             const user = await authService.findById(payload.userId);
 
             if (!user) {
@@ -100,10 +94,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             }
 
             const newAccessToken = fastify.jwt.sign({ userId: user.id });
-            const newRefreshToken = fastify.jwt.sign(
-                { userId: user.id },
-                { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '7d', secret: process.env.REFRESH_TOKEN_SECRET },
-            );
+            const newRefreshToken = fastify.jwt.sign({ userId: user.id }, { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || '7d' });
 
             await authService.replaceRefreshToken(user.id, oldRefreshToken, newRefreshToken);
 

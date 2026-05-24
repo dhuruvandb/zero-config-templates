@@ -12,10 +12,10 @@ export function Register({ switchToLogin }: { switchToLogin: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const result = await auth.register(email, password);
 
     try {
-      if (result.accessToken) {
+      const result = await auth.register(email, password);
+      if (result?.accessToken) {
         switchToLogin();
       }
     } catch (err: any) {
@@ -25,7 +25,7 @@ export function Register({ switchToLogin }: { switchToLogin: () => void }) {
         // Extract express-validator error messages
         setError(err.response.data.errors.map((e: any) => e.msg));
       } else {
-        setError(err?.response?.data?.message || "Registration failed");
+        setError(err?.response?.data?.message || err?.message || "Registration failed");
       }
     }
   };

@@ -61,7 +61,7 @@ export class AuthService {
         return prisma.user.update({
             where: { id: userId },
             data: {
-                refreshTokens: user.refreshTokens.filter((t) => t !== refreshToken),
+                refreshTokens: user.refreshTokens.filter((t: string) => t !== refreshToken),
             },
         });
     }
@@ -76,7 +76,7 @@ export class AuthService {
             throw new Error('User not found');
         }
 
-        const filteredTokens = user.refreshTokens.filter((t) => t !== oldToken);
+        const filteredTokens = user.refreshTokens.filter((t: string) => t !== oldToken);
 
         return prisma.user.update({
             where: { id: userId },

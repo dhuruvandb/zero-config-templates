@@ -19,7 +19,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async register(
     registerDto: RegisterDto,
@@ -133,7 +133,7 @@ export class AuthService {
       {
         secret: this.configService.getOrThrow<string>('ACCESS_TOKEN_SECRET'),
         expiresIn:
-          this.configService.get<string>('ACCESS_TOKEN_EXPIRY') ?? '15m',
+          (this.configService.get<string>('ACCESS_TOKEN_EXPIRY') ?? '15m') as any,
       },
     );
   }
@@ -144,7 +144,7 @@ export class AuthService {
       {
         secret: this.configService.getOrThrow<string>('REFRESH_TOKEN_SECRET'),
         expiresIn:
-          this.configService.get<string>('REFRESH_TOKEN_EXPIRY') ?? '7d',
+          (this.configService.get<string>('REFRESH_TOKEN_EXPIRY') ?? '7d') as any,
       },
     );
   }
