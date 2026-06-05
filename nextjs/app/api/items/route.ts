@@ -1,73 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getItemsByUserId, createItem, getUserIdByEmail } from "../db/sqlite";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-interface Item {
-  _id: string;
-  name: string;
-  userId: string;
-}
+export async function GET() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-// Helper to extract user ID from token
-function getUserIdFromToken(token: string): string | null {
-  try {
-    const decoded = Buffer.from(token.replace("Bearer ", ""), "base64").toString(
-      "utf-8"
-    );
-    return decoded.split(":")[0]; // Returns the user ID or email
-  } catch {
-    return null;
-  }
-}
-
-export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-
-  if (!authHeader) {
+  if (!session) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  let userId = getUserIdFromToken(authHeader);
-  if (!userId) {
-    return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-  }
+  const items = await prisma.item.findMany({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: "desc" },
+  });
 
-  // If token contains email (old tokens), look up the user ID
-  if (userId.includes("@")) {
-    const actualUserId = getUserIdByEmail(userId);
-    if (!actualUserId) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-    }
-    userId = actualUserId;
-  }
-
-  const userItems = getItemsByUserId(userId as string);
-  return NextResponse.json(userItems);
+  return NextResponse.json(items);
 }
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-  if (!authHeader) {
+  if (!session) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-  let userId = getUserIdFromToken(authHeader);
-  
-  if (!userId) {
-    return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-  }
-
-  // If token contains email (old tokens), look up the user ID
-  if (userId.includes("@")) {
-    const actualUserId = getUserIdByEmail(userId);
-    if (!actualUserId) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-    }
-    userId = actualUserId;
   }
 
   const { name } = await request.json();
 
-  const newItem = createItem(userId as string, name);
-  return NextResponse.json(newItem);
+  const item = await prisma.item.create({
+    data: { name, userId: session.user.id },
+  });
+
+  return NextResponse.json(item);
 }

@@ -1,43 +1,35 @@
 import { Injectable, signal } from '@angular/core';
-import { ApiService } from './api.service';
+import { createAuthClient } from 'better-auth';
+
+const authClient = createAuthClient({
+  baseURL: 'http://localhost:5000',
+});
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  accessToken = signal<string | null>(null);
-
-  constructor(private apiService: ApiService) {
-    // Load token from localStorage on init
-    const storedToken = localStorage.getItem('token');
-    if (storedToken) {
-      this.accessToken.set(storedToken);
-    }
-  }
+  // Better Auth handles session via cookies — signal tracks login state
+  isAuthenticated = signal(false);
 
   async login(email: string, password: string): Promise<void> {
-    const res = await this.apiService.post('/api/auth/login', { email, password });
-
-    if (!res.accessToken) {
-      throw new Error(res.message || 'Login failed');
-    }
-
-    this.accessToken.set(res.accessToken);
-    localStorage.setItem('token', res.accessToken);
+    const { error } = await authClient.signIn.email({ email, password });
+    if (error) throw new Error(error.message || 'Login failed');
+    this.isAuthenticated.set(true);
   }
 
-  async register(email: string, password: string): Promise<any> {
-    const res = await this.apiService.post('/api/auth/register', { email, password });
-
-    if (!res.accessToken) {
-      throw new Error(res.message || 'Registration failed');
-    }
-
-    return res;
+  async register(email: string, password: string): Promise<void> {
+    const { error } = await authClient.signUp.email({
+      email,
+      password,
+      name: email.split('@')[0],
+    });
+    if (error) throw new Error(error.message || 'Registration failed');
+    this.isAuthenticated.set(true);
   }
 
-  logout(): void {
-    this.accessToken.set(null);
-    localStorage.removeItem('token');
+  async logout(): Promise<void> {
+    await authClient.signOut();
+    this.isAuthenticated.set(false);
   }
 }

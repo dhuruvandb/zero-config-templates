@@ -1,14 +1,15 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import cookieParser from "cookie-parser";
+import { toNodeHandler, fromNodeHeaders } from "better-auth/node";
+import { auth } from "./lib/auth";
 import itemRoutes from "./routes/itemRoutes";
-import authRoutes from "./routes/authRoutes";
-import { authenticateToken } from "./middleware/auth";
 
 dotenv.config();
 
 const app = express();
+
+// CORS must be before the Better Auth handler
 app.use(
     cors({
         origin: [
@@ -18,13 +19,15 @@ app.use(
         credentials: true,
     })
 );
+
+// Better Auth handler — mounted BEFORE express.json() per docs
+app.all("/api/auth/*", toNodeHandler(auth));
+
+// Express JSON middleware — only for non-auth routes
 app.use(express.json());
-app.use(cookieParser());
 
-// Public auth routes
-app.use("/api/auth", authRoutes);
-
-// Protected example route
-app.use("/api/items", authenticateToken, itemRoutes);
+// Mount express.json() for routes that need it after auth handler
+app.use("/api/items", itemRoutes);
 
 export default app;
+export { app, fromNodeHeaders, auth };

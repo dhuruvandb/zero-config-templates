@@ -6,51 +6,54 @@ import {
   Delete,
   Body,
   Param,
-  UseGuards,
+  Req,
   ValidationPipe,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ItemsService } from './items.service';
-import { CreateItemDto, UpdateItemDto } from './dto/item.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { GetUser } from '../auth/decorators/get-user.decorator';
-import type { Item } from '../types/prisma.types';
+import type { Request } from 'express';
+import { ItemsService } from './items.service.js';
+import { CreateItemDto, UpdateItemDto } from './dto/item.dto.js';
+import type { Item } from '../types/prisma.types.js';
+
+/** Extract userId from request — set by auth middleware in main.ts */
+function getUserId(req: Request): string {
+  return (req as any).userId;
+}
 
 @Controller('api/items')
-@UseGuards(JwtAuthGuard)
 export class ItemsController {
   constructor(private readonly itemsService: ItemsService) { }
 
   @Get()
-  async findAll(@GetUser('id') userId: string): Promise<Item[]> {
-    return this.itemsService.findAll(userId);
+  async findAll(@Req() req: Request): Promise<Item[]> {
+    return this.itemsService.findAll(getUserId(req));
   }
 
   @Post()
   async create(
     @Body(ValidationPipe) createItemDto: CreateItemDto,
-    @GetUser('id') userId: string,
+    @Req() req: Request,
   ): Promise<Item> {
-    return this.itemsService.create(createItemDto, userId);
+    return this.itemsService.create(createItemDto, getUserId(req));
   }
 
   @Put(':id')
   async update(
     @Param('id') id: string,
     @Body(ValidationPipe) updateItemDto: UpdateItemDto,
-    @GetUser('id') userId: string,
+    @Req() req: Request,
   ): Promise<Item> {
-    return this.itemsService.update(id, updateItemDto);
+    return this.itemsService.update(id, updateItemDto, getUserId(req));
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   async remove(
     @Param('id') id: string,
-    @GetUser('id') userId: string,
+    @Req() req: Request,
   ): Promise<{ message: string }> {
-    await this.itemsService.remove(id, userId);
+    await this.itemsService.remove(id, getUserId(req));
     return { message: 'Deleted' };
   }
 }

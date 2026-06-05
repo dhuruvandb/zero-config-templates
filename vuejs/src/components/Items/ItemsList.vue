@@ -1,32 +1,43 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import api from '@/api/api'
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000'
 
 interface Item {
-  _id: string
+  id: string
   name: string
 }
-
-const props = defineProps<{ accessToken: string | null }>()
 
 const items = ref<Item[]>([])
 const newItem = ref('')
 
+async function apiFetch(path: string, options: RequestInit = {}) {
+  const res = await fetch(API_BASE + path, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...(options.headers as any) },
+    ...options,
+  })
+  const contentType = res.headers.get('content-type') || ''
+  if (contentType.indexOf('application/json') >= 0) {
+    return res.json()
+  }
+  return null
+}
+
 const fetchItems = async () => {
-  if (!props.accessToken) return
-  const data = await api.authGet('/api/items', props.accessToken)
+  const data = await apiFetch('/api/items')
   items.value = Array.isArray(data) ? data : []
 }
 
 const addItem = async () => {
-  if (!props.accessToken) return
   if (!newItem.value.trim()) return
 
-  const created = await api.authPost('/api/items', props.accessToken, {
-    name: newItem.value,
+  const created = await apiFetch('/api/items', {
+    method: 'POST',
+    body: JSON.stringify({ name: newItem.value }),
   })
 
-  if (created?._id) {
+  if (created?.id) {
     items.value = [...items.value, created]
   }
 
@@ -34,9 +45,8 @@ const addItem = async () => {
 }
 
 const deleteItem = async (id: string) => {
-  if (!props.accessToken) return
-  await api.authDelete(`/api/items/${id}`, props.accessToken)
-  items.value = items.value.filter((item) => item._id !== id)
+  await apiFetch(`/api/items/${id}`, { method: 'DELETE' })
+  items.value = items.value.filter((item) => item.id !== id)
 }
 
 onMounted(() => {
@@ -52,9 +62,9 @@ onMounted(() => {
     </div>
 
     <ul class="item-list">
-      <li v-for="item in items" :key="item._id" class="item">
+      <li v-for="item in items" :key="item.id" class="item">
         {{ item.name }}
-        <button class="delete-btn" @click="deleteItem(item._id)">Delete</button>
+        <button class="delete-btn" @click="deleteItem(item.id)">Delete</button>
       </li>
     </ul>
   </div>

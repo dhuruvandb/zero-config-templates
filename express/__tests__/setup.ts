@@ -3,10 +3,8 @@ import * as path from "path";
 process.env.TEST_DB_DIR = path.resolve(__dirname, "..", ".test-data");
 // BASE_DATABASE_URL is a template — each test file replaces {id} with its own name
 process.env.DATABASE_URL = `file:${path.resolve(process.env.TEST_DB_DIR, "test.db")}`;
-process.env.ACCESS_TOKEN_SECRET = "test-access-secret-for-jest";
-process.env.REFRESH_TOKEN_SECRET = "test-refresh-secret-for-jest";
-process.env.ACCESS_TOKEN_EXPIRY = "15m";
-process.env.REFRESH_TOKEN_EXPIRY = "7d";
+process.env.BETTER_AUTH_SECRET = "test-secret-at-least-32-characters-long-for-better-auth";
+process.env.BETTER_AUTH_URL = "http://localhost:5000";
 process.env.NODE_ENV = "test";
 process.env.PORT = "0";
 

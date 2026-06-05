@@ -1,99 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteItem, updateItem, getUserIdByEmail } from "../../db/sqlite";
-
-interface Item {
-  _id: string;
-  name: string;
-  userId: string;
-}
-
-// Helper to extract user ID from token
-function getUserIdFromToken(token: string): string | null {
-  try {
-    const decoded = Buffer.from(token.replace("Bearer ", ""), "base64").toString(
-      "utf-8"
-    );
-    return decoded.split(":")[0]; // Returns the user ID or email
-  } catch {
-    return null;
-  }
-}
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authHeader = request.headers.get("authorization");
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-  if (!authHeader) {
+  if (!session) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = getUserIdFromToken(authHeader);
-  if (!userId) {
-    return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-  }
-
-  // If token contains email (old tokens), look up the user ID
-  let actualUserId = userId;
-  if (userId.includes("@")) {
-    const resolvedId = getUserIdByEmail(userId);
-    if (!resolvedId) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-    }
-    actualUserId = resolvedId;
-  }
-
   const { id } = await params;
-  const deleted = deleteItem(id, actualUserId);
+  const existing = await prisma.item.findUnique({ where: { id } });
 
-  if (!deleted) {
+  if (!existing) {
     return NextResponse.json({ message: "Item not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ message: "Item deleted" });
+  if (existing.userId !== session.user.id) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  }
+
+  await prisma.item.delete({ where: { id } });
+  return NextResponse.json({ message: "Deleted" });
 }
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authHeader = request.headers.get("authorization");
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-  if (!authHeader) {
+  if (!session) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = getUserIdFromToken(authHeader);
-  if (!userId) {
-    return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-  }
-
-  // If token contains email (old tokens), look up the user ID
-  let actualUserId = userId;
-  if (userId.includes("@")) {
-    const resolvedId = getUserIdByEmail(userId);
-    if (!resolvedId) {
-      return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-    }
-    actualUserId = resolvedId;
-  }
-
   const { id } = await params;
-  const { name } = await request.json();
+  const existing = await prisma.item.findUnique({ where: { id } });
 
-  if (!name || !name.trim()) {
-    return NextResponse.json(
-      { message: "Item name is required" },
-      { status: 400 }
-    );
-  }
-
-  const updated = updateItem(id, actualUserId, name.trim());
-
-  if (!updated) {
+  if (!existing) {
     return NextResponse.json({ message: "Item not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ _id: id, name: name.trim(), userId: actualUserId });
+  if (existing.userId !== session.user.id) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  }
+
+  const { name } = await request.json();
+  const updated = await prisma.item.update({
+    where: { id },
+    data: { name },
+  });
+
+  return NextResponse.json(updated);
 }
