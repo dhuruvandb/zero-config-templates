@@ -1,6 +1,7 @@
-import { Component, OnInit, signal, input } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ApiService } from '../../services/api.service';
+
+const API_BASE = 'http://localhost:5000';
 
 interface Item {
   _id: string;
@@ -34,36 +35,39 @@ interface Item {
   styles: ``
 })
 export class ItemsComponent implements OnInit {
-  accessToken = input.required<string>();
   items = signal<Item[]>([]);
   newItem = '';
 
-  constructor(private apiService: ApiService) {}
+  async fetchItems(): Promise<void> {
+    const res = await fetch(`${API_BASE}/api/items`, { credentials: 'include' });
+    const data = await res.json();
+    this.items.set(data);
+  }
 
   ngOnInit(): void {
     this.fetchItems();
   }
 
-  async fetchItems(): Promise<void> {
-    const data = await this.apiService.authGet('/api/items', this.accessToken());
-    this.items.set(data);
-  }
-
   async addItem(): Promise<void> {
     if (!this.newItem.trim()) return;
 
-    const created = await this.apiService.authPost(
-      '/api/items',
-      this.accessToken(),
-      { name: this.newItem }
-    );
+    const res = await fetch(`${API_BASE}/api/items`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name: this.newItem }),
+    });
 
+    const created = await res.json();
     this.items.set([...this.items(), created]);
     this.newItem = '';
   }
 
   async deleteItem(id: string): Promise<void> {
-    await this.apiService.authDelete(`/api/items/${id}`, this.accessToken());
+    await fetch(`${API_BASE}/api/items/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
     this.items.set(this.items().filter(i => i._id !== id));
   }
 }

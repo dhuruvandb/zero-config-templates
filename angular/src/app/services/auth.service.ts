@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { createAuthClient } from 'better-auth';
+import { createAuthClient } from 'better-auth/client';
 
 const authClient = createAuthClient({
   baseURL: 'http://localhost:5000',

@@ -1,4 +1,4 @@
-@if (!authService.accessToken()) {
+@if (!authService.isAuthenticated()) {
   <app-auth />
 } @else {
   <div class="app-wrapper">
@@ -7,6 +7,6 @@
       <button class="logout-btn" (click)="authService.logout()">Logout</button>
     </div>
 
-    <app-items [accessToken]="authService.accessToken()!" />
+    <app-items />
   </div>
 }
