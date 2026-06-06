@@ -16,7 +16,7 @@ export async function buildApp(opts?: { logger?: boolean }) {
     });
 
     // Better Auth handler — uses standard Web API Request/Response
-    app.all('/api/auth/*', async (request, reply) => {
+    app.all('/api/auth/:path(.*)?', async (request, reply) => {
         // Convert Fastify request to Web API Request
         const url = new URL(request.url, config.baseUrl);
         const headers = new Headers();

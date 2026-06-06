@@ -14,10 +14,8 @@ export function Register({ switchToLogin }: { switchToLogin: () => void }) {
     setError("");
 
     try {
-      const result = await auth.register(email, password);
-      if (result?.accessToken) {
-        switchToLogin();
-      }
+      await auth.register(email, password);
+      switchToLogin();
     } catch (err: any) {
       // Backend may return: { errors: [...] } or { message: "..." }
 

@@ -21,7 +21,7 @@ app.use(
 );
 
 // Better Auth handler — mounted BEFORE express.json() per docs
-app.all("/api/auth/*", toNodeHandler(auth));
+app.all("/api/auth/:path(.*)?", toNodeHandler(auth));
 
 // Express JSON middleware — only for non-auth routes
 app.use(express.json());
