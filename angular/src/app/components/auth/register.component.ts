@@ -57,21 +57,18 @@ export class RegisterComponent {
   password = '';
   error = signal<string>('');
   errorArray = signal<string[] | null>(null);
-  
+
   switchToLogin = output<void>();
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   async handleSubmit(): Promise<void> {
     this.error.set('');
     this.errorArray.set(null);
-    
+
     try {
-      const result = await this.authService.register(this.email, this.password);
-      
-      if (result.accessToken) {
-        this.switchToLogin.emit();
-      }
+      await this.authService.register(this.email, this.password);
+      this.switchToLogin.emit();
     } catch (err: any) {
       // Backend may return: { errors: [...] } or { message: "..." }
       if (err?.response?.data?.errors) {

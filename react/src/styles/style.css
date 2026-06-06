@@ -97,6 +97,46 @@ button {
   font-weight: 600;
 }
 
+.auth-social {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.auth-or {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 0.8rem;
+  position: relative;
+}
+
+.auth-social-buttons {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+}
+
+.auth-social-btn {
+  width: auto;
+  padding: 0.6rem 1.5rem;
+  background: #f0f0f0;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.auth-social-btn:hover {
+  background: #e0e0e0;
+}
+
+.auth-social-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.auth-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .error-msg {
   background: #ffefef;
   color: #d60000;
