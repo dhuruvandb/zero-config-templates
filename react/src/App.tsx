@@ -26,7 +26,7 @@ function App() {
         </button>
       </div>
 
-      <ItemsComponent accessToken={session.session.token} />
+      <ItemsComponent />
     </div>
   );
 }

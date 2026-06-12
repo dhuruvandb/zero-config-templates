@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 const API_BASE = 'http://localhost:5000';
 
 interface Item {
-  _id: string;
+  id: string;
   name: string;
 }
 
@@ -23,10 +23,10 @@ interface Item {
       </div>
 
       <ul class="item-list">
-        @for (item of items(); track item._id) {
+        @for (item of items(); track item.id) {
           <li class="item">
             {{ item.name }}
-            <button class="delete-btn" (click)="deleteItem(item._id)">Delete</button>
+            <button class="delete-btn" (click)="deleteItem(item.id)">Delete</button>
           </li>
         }
       </ul>
@@ -68,6 +68,6 @@ export class ItemsComponent implements OnInit {
       method: 'DELETE',
       credentials: 'include',
     });
-    this.items.set(this.items().filter(i => i._id !== id));
+    this.items.set(this.items().filter(i => i.id !== id));
   }
 }

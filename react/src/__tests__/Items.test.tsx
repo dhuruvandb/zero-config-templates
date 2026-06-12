@@ -3,16 +3,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ItemsComponent from "../components/Items/Items";
 
-// Mock fetch globally
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
-
 // Mock api module helper
 vi.mock("../api/api", () => ({
   default: {
     post: vi.fn(),
-    authGet: vi.fn(),
-    authDelete: vi.fn().mockResolvedValue({}),
+    get: vi.fn(),
+    del: vi.fn().mockResolvedValue({}),
   },
 }));
 
@@ -23,12 +19,12 @@ describe("ItemsComponent", () => {
 
   it("should fetch and display items on mount", async () => {
     const api = (await import("../api/api")).default;
-    (api.authGet as any).mockResolvedValue([
-      { _id: "1", name: "Item 1" },
-      { _id: "2", name: "Item 2" },
+    (api.get as any).mockResolvedValue([
+      { id: "1", name: "Item 1" },
+      { id: "2", name: "Item 2" },
     ]);
 
-    render(<ItemsComponent accessToken="test-token" />);
+    render(<ItemsComponent />);
 
     await waitFor(() => {
       expect(screen.getByText("Item 1")).toBeInTheDocument();
@@ -38,9 +34,9 @@ describe("ItemsComponent", () => {
 
   it("should show empty state when no items", async () => {
     const api = (await import("../api/api")).default;
-    (api.authGet as any).mockResolvedValue([]);
+    (api.get as any).mockResolvedValue([]);
 
-    render(<ItemsComponent accessToken="test-token" />);
+    render(<ItemsComponent />);
 
     await waitFor(() => {
       // The list should be empty (no list items rendered)
@@ -51,12 +47,10 @@ describe("ItemsComponent", () => {
 
   it("should add a new item", async () => {
     const api = (await import("../api/api")).default;
-    (api.authGet as any).mockResolvedValue([]);
-    mockFetch.mockResolvedValue({
-      json: () => Promise.resolve({ _id: "3", name: "New Item" }),
-    });
+    (api.get as any).mockResolvedValue([]);
+    (api.post as any).mockResolvedValue({ id: "3", name: "New Item" });
 
-    render(<ItemsComponent accessToken="test-token" />);
+    render(<ItemsComponent />);
 
     const input = screen.getByPlaceholderText("New item name");
     await userEvent.type(input, "New Item");
@@ -69,12 +63,12 @@ describe("ItemsComponent", () => {
 
   it("should delete an item", async () => {
     const api = (await import("../api/api")).default;
-    (api.authGet as any).mockResolvedValue([
-      { _id: "1", name: "Item to Delete" },
+    (api.get as any).mockResolvedValue([
+      { id: "1", name: "Item to Delete" },
     ]);
-    (api.authDelete as any).mockResolvedValue({});
+    (api.del as any).mockResolvedValue({});
 
-    render(<ItemsComponent accessToken="test-token" />);
+    render(<ItemsComponent />);
 
     await waitFor(() => {
       expect(screen.getByText("Item to Delete")).toBeInTheDocument();

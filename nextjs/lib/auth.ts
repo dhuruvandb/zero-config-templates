@@ -10,6 +10,8 @@ export const auth = betterAuth({
     database: prismaAdapter(prisma, {
         provider: "sqlite",
     }),
+    baseURL: process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 3000}`,
+    trustedOrigins: [process.env.BETTER_AUTH_URL || `http://localhost:${process.env.PORT || 3000}`],
     emailAndPassword: {
         enabled: true,
         sendResetPassword: async ({ user, url }) => {

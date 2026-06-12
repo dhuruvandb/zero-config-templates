@@ -2,43 +2,32 @@ import { useEffect, useState } from "react";
 import api from "../../api/api";
 
 interface Item {
-  _id: string;
+  id: string;
   name: string;
 }
 
-export default function ItemsComponent({
-  accessToken,
-}: {
-  accessToken: string;
-}) {
+export default function ItemsComponent() {
   const [items, setItems] = useState<Item[]>([]);
   const [newItem, setNewItem] = useState("");
 
   async function fetchItems() {
-    const data = await api.authGet("/api/items", accessToken);
-    setItems(data);
+    const data = await api.get("/api/items");
+    setItems(Array.isArray(data) ? data : []);
   }
 
   async function addItem() {
     if (!newItem.trim()) return;
 
-    const res = await fetch("http://localhost:5000/api/items", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name: newItem }),
-    });
-
-    const created = await res.json();
-    setItems([...items, created]);
+    const created = await api.post("/api/items", { name: newItem });
+    if (created?.id) {
+      setItems([...items, created]);
+    }
     setNewItem("");
   }
 
   async function deleteItem(id: string) {
-    await api.authDelete(`/api/items/${id}`, accessToken);
-    setItems(items.filter((i) => i._id !== id));
+    await api.del(`/api/items/${id}`);
+    setItems(items.filter((i) => i.id !== id));
   }
 
   useEffect(() => {
@@ -60,9 +49,9 @@ export default function ItemsComponent({
 
       <ul className="item-list">
         {items.map((item) => (
-          <li key={item._id} className="item">
+          <li key={item.id} className="item">
             {item.name}
-            <button className="delete-btn" onClick={() => deleteItem(item._id)}>
+            <button className="delete-btn" onClick={() => deleteItem(item.id)}>
               Delete
             </button>
           </li>
