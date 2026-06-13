@@ -2,10 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ItemsService } from '../src/items/items.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { NotFoundException } from '@nestjs/common';
+import { vi, Mocked, Mock } from 'vitest';
 
 describe('ItemsService', () => {
     let itemsService: ItemsService;
-    let prisma: jest.Mocked<PrismaService>;
+    let prisma: Mocked<PrismaService>;
 
     const mockItem = {
         id: 'item-1',
@@ -23,11 +24,11 @@ describe('ItemsService', () => {
                     provide: PrismaService,
                     useValue: {
                         item: {
-                            create: jest.fn(),
-                            findMany: jest.fn(),
-                            findUnique: jest.fn(),
-                            update: jest.fn(),
-                            delete: jest.fn(),
+                            create: vi.fn(),
+                            findMany: vi.fn(),
+                            findUnique: vi.fn(),
+                            update: vi.fn(),
+                            delete: vi.fn(),
                         },
                     },
                 },
@@ -42,7 +43,7 @@ describe('ItemsService', () => {
 
     describe('create', () => {
         it('should create an item', async () => {
-            (prisma.item.create as jest.Mock).mockResolvedValue(mockItem);
+            (prisma.item.create as Mock).mockResolvedValue(mockItem);
 
             const result = await itemsService.create(
                 { name: 'Test Item' },
@@ -60,7 +61,7 @@ describe('ItemsService', () => {
 
     describe('findAll', () => {
         it('should return all items for a user', async () => {
-            (prisma.item.findMany as jest.Mock).mockResolvedValue([mockItem]);
+            (prisma.item.findMany as Mock).mockResolvedValue([mockItem]);
 
             const result = await itemsService.findAll('user-1');
 
@@ -72,7 +73,7 @@ describe('ItemsService', () => {
         });
 
         it('should return empty array for user with no items', async () => {
-            (prisma.item.findMany as jest.Mock).mockResolvedValue([]);
+            (prisma.item.findMany as Mock).mockResolvedValue([]);
 
             const result = await itemsService.findAll('user-with-no-items');
 
@@ -82,7 +83,7 @@ describe('ItemsService', () => {
 
     describe('findOne', () => {
         it('should return an item by id', async () => {
-            (prisma.item.findUnique as jest.Mock).mockResolvedValue(mockItem);
+            (prisma.item.findUnique as Mock).mockResolvedValue(mockItem);
 
             const result = await itemsService.findOne('item-1');
 
@@ -90,7 +91,7 @@ describe('ItemsService', () => {
         });
 
         it('should throw NotFoundException for non-existent item', async () => {
-            (prisma.item.findUnique as jest.Mock).mockResolvedValue(null);
+            (prisma.item.findUnique as Mock).mockResolvedValue(null);
 
             await expect(itemsService.findOne('bad-id')).rejects.toThrow(
                 NotFoundException,
@@ -102,8 +103,8 @@ describe('ItemsService', () => {
 
     describe('update', () => {
         it('should update an item', async () => {
-            (prisma.item.findUnique as jest.Mock).mockResolvedValue(mockItem);
-            (prisma.item.update as jest.Mock).mockResolvedValue({
+            (prisma.item.findUnique as Mock).mockResolvedValue(mockItem);
+            (prisma.item.update as Mock).mockResolvedValue({
                 ...mockItem,
                 name: 'Updated',
             });
@@ -118,7 +119,7 @@ describe('ItemsService', () => {
         });
 
         it('should throw NotFoundException for non-existent item', async () => {
-            (prisma.item.findUnique as jest.Mock).mockResolvedValue(null);
+            (prisma.item.findUnique as Mock).mockResolvedValue(null);
 
             await expect(
                 itemsService.update('bad-id', { name: 'Ghost' }),
@@ -130,8 +131,8 @@ describe('ItemsService', () => {
 
     describe('remove', () => {
         it('should delete an item', async () => {
-            (prisma.item.findUnique as jest.Mock).mockResolvedValue(mockItem);
-            (prisma.item.delete as jest.Mock).mockResolvedValue(mockItem);
+            (prisma.item.findUnique as Mock).mockResolvedValue(mockItem);
+            (prisma.item.delete as Mock).mockResolvedValue(mockItem);
 
             await itemsService.remove('item-1', 'user-1');
 
@@ -141,7 +142,7 @@ describe('ItemsService', () => {
         });
 
         it('should throw NotFoundException for non-existent item', async () => {
-            (prisma.item.findUnique as jest.Mock).mockResolvedValue(null);
+            (prisma.item.findUnique as Mock).mockResolvedValue(null);
 
             await expect(
                 itemsService.remove('bad-id', 'user-1'),
@@ -150,7 +151,7 @@ describe('ItemsService', () => {
 
         it('should throw NotFoundException when deleting other user\'s item', async () => {
             const otherUserItem = { ...mockItem, userId: 'other-user' };
-            (prisma.item.findUnique as jest.Mock).mockResolvedValue(otherUserItem);
+            (prisma.item.findUnique as Mock).mockResolvedValue(otherUserItem);
 
             await expect(
                 itemsService.remove('item-1', 'user-1'),
