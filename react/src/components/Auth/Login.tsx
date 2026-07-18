@@ -1,20 +1,43 @@
 import React, { useState, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
+import { authClient } from "../../lib/auth-client";
 
-export function Login({ switchToRegister }: { switchToRegister: () => void }) {
+export function Login({
+  switchToRegister,
+  switchToForgotPassword,
+}: {
+  switchToRegister: () => void;
+  switchToForgotPassword: () => void;
+}) {
   const auth = useContext(AuthContext);
   if (!auth) throw new Error("AuthContext not found");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
     try {
       await auth.login(email, password);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (provider: "google" | "github") => {
+    setSocialLoading(provider);
+    try {
+      await authClient.signIn.social({ provider, callbackURL: "/" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `${provider} login failed`);
+      setSocialLoading(null);
     }
   };
 
@@ -45,10 +68,36 @@ export function Login({ switchToRegister }: { switchToRegister: () => void }) {
           />
         </div>
 
-        <button type="submit" className="auth-btn">
-          Login
+        <button type="submit" className="auth-btn" disabled={loading}>
+          {loading ? "Signing in..." : "Login"}
         </button>
       </form>
+
+      <div className="auth-social">
+        <p className="auth-or">Or continue with</p>
+        <div className="auth-social-buttons">
+          <button
+            type="button"
+            disabled={socialLoading === 'google'}
+            onClick={() => handleSocialLogin('google')}
+            className="auth-btn auth-social-btn"
+          >
+            {socialLoading === 'google' ? 'Redirecting...' : 'Google'}
+          </button>
+          <button
+            type="button"
+            disabled={socialLoading === 'github'}
+            onClick={() => handleSocialLogin('github')}
+            className="auth-btn auth-social-btn"
+          >
+            {socialLoading === 'github' ? 'Redirecting...' : 'GitHub'}
+          </button>
+        </div>
+      </div>
+
+      <div className="auth-switch">
+        <span onClick={switchToForgotPassword}>Forgot password?</span>
+      </div>
 
       <div className="auth-switch">
         New user? <span onClick={switchToRegister}>Create an account</span>

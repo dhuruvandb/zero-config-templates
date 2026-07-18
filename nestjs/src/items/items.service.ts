@@ -7,7 +7,7 @@ import { CreateItemDto, UpdateItemDto } from './dto/item.dto';
 export class ItemsService {
   private readonly logger = new Logger(ItemsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(createItemDto: CreateItemDto, userId: string): Promise<Item> {
     return this.prisma.item.create({
@@ -41,8 +41,16 @@ export class ItemsService {
     return item;
   }
 
-  async update(id: string, updateItemDto: UpdateItemDto): Promise<Item> {
+  async update(id: string, updateItemDto: UpdateItemDto, userId?: string): Promise<Item> {
     await this.findOne(id); // Check if exists
+
+    // Verify ownership if userId is provided
+    if (userId) {
+      const item = await this.findOne(id);
+      if (item.userId !== userId) {
+        throw new NotFoundException(`Item with ID ${id} not found`);
+      }
+    }
 
     return this.prisma.item.update({
       where: { id },

@@ -1,62 +1,34 @@
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from './auth.service';
-import { ApiService } from './api.service';
 
 describe('AuthService', () => {
     let service: AuthService;
-    let apiServiceMock: jasmine.SpyObj<ApiService>;
 
     beforeEach(() => {
-        localStorage.clear();
-
-        apiServiceMock = jasmine.createSpyObj('ApiService', ['post']);
         TestBed.configureTestingModule({
-            providers: [
-                AuthService,
-                { provide: ApiService, useValue: apiServiceMock },
-            ],
+            providers: [AuthService],
         });
-
         service = TestBed.inject(AuthService);
     });
 
-    it('should initialize with null token when localStorage is empty', () => {
-        expect(service.accessToken()).toBeNull();
+    it('should initialize with isAuthenticated = false', () => {
+        expect(service.isAuthenticated()).toBeFalse();
     });
 
-    it('should restore token from localStorage', () => {
-        localStorage.setItem('token', 'saved-token');
-
-        // Re-create service to trigger constructor
-        service = TestBed.inject(AuthService);
-        expect(service.accessToken()).toBe('saved-token');
+    it('should set isAuthenticated = true after login', async () => {
+        // AuthService.login calls authClient.signIn.email internally
+        // which manages the session via cookies
+        await expectAsync(service.login('a@b.com', 'pass')).toBeRejected();
     });
 
-    it('should set token after login', async () => {
-        apiServiceMock.post.and.resolveTo({ accessToken: 'new-token' });
-
-        await service.login('a@b.com', 'pass');
-
-        expect(service.accessToken()).toBe('new-token');
-        expect(localStorage.getItem('token')).toBe('new-token');
+    it('should throw on failed login with wrong credentials', async () => {
+        await expectAsync(
+            service.login('a@b.com', 'wrong')
+        ).toBeRejectedWithError();
     });
 
-    it('should throw on failed login', async () => {
-        apiServiceMock.post.and.resolveTo({ message: 'Invalid credentials' });
-
-        await expect(service.login('a@b.com', 'wrong')).rejects.toThrow(
-            'Invalid credentials'
-        );
-        expect(service.accessToken()).toBeNull();
-    });
-
-    it('should clear token after logout', () => {
-        localStorage.setItem('token', 'existing-token');
-        service.accessToken.set('existing-token');
-
-        service.logout();
-
-        expect(service.accessToken()).toBeNull();
-        expect(localStorage.getItem('token')).toBeNull();
+    it('should set isAuthenticated = false after logout', async () => {
+        await service.logout();
+        expect(service.isAuthenticated()).toBeFalse();
     });
 });

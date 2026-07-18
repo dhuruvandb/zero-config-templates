@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execSync } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
@@ -20,6 +21,11 @@ if (fs.existsSync(testDbPath)) {
     try { fs.unlinkSync(testDbPath); } catch { /* ignore EBUSY */ }
 }
 
+// Set required Better Auth env vars
+process.env.BETTER_AUTH_SECRET = "test-secret-at-least-32-characters-long-for-better-auth";
+process.env.BETTER_AUTH_URL = "http://localhost:5000";
+process.env.NODE_ENV = "test";
+
 execSync(
     `npx prisma db push --schema=prisma/schema.test.prisma --accept-data-loss`,
     {
@@ -29,13 +35,19 @@ execSync(
     }
 );
 
-// Now import app (Prisma client will use the SQLite URL from env)
-import app from "../src/app";
+let app: any;
+let agent: any;
 
-const agent = request.agent(app);
+beforeAll(async () => {
+    // Dynamic import ensures env vars are set before app initialization
+    const mod = await import("../src/app");
+    app = mod.default || mod.app;
+    agent = request.agent(app);
+});
 
-describe("Auth API", () => {
+describe("Auth API (Better Auth)", () => {
     const testUser = {
+        name: "Test User",
         email: "test@example.com",
         password: "TestPass123!",
     };
@@ -51,221 +63,120 @@ describe("Auth API", () => {
         }
     });
 
-    // ─── Register ───────────────────────────────────────────────
+    // ─── Sign Up ──────────────────────────────────────────────
 
-    describe("POST /api/auth/register", () => {
-        it("should register a new user and return access token", async () => {
+    describe("POST /api/auth/sign-up/email", () => {
+        it("should register a new user and return session cookie", async () => {
             const res = await agent
-                .post("/api/auth/register")
-                .send(testUser)
+                .post("/api/auth/sign-up/email")
+                .send({
+                    name: testUser.name,
+                    email: testUser.email,
+                    password: testUser.password,
+                })
                 .expect(200);
 
-            expect(res.body).toHaveProperty("accessToken");
-            expect(typeof res.body.accessToken).toBe("string");
-            // Should set refresh token cookie
+            expect(res.body).toHaveProperty("user");
+            expect(res.body.user.email).toBe(testUser.email);
+            expect(res.body.user.name).toBe(testUser.name);
+            // Better Auth sets session cookie
             const cookies = res.headers["set-cookie"];
             expect(cookies).toBeDefined();
-            // set-cookie can be string (single cookie) or string[] — normalize to array
-            const cookieList = Array.isArray(cookies) ? cookies : [cookies];
-            expect(cookieList.some((c: string) => c.startsWith("jid="))).toBe(true);
         });
 
         it("should reject duplicate email", async () => {
             const res = await agent
-                .post("/api/auth/register")
-                .send(testUser)
-                .expect(400);
+                .post("/api/auth/sign-up/email")
+                .send({
+                    name: testUser.name,
+                    email: testUser.email,
+                    password: testUser.password,
+                })
+                .expect(422);
 
             expect(res.body).toHaveProperty("message");
-            expect(res.body.message).toMatch(/already exists/i);
-        });
-
-        it("should reject weak password (no uppercase)", async () => {
-            const res = await agent
-                .post("/api/auth/register")
-                .send({ email: "weak@example.com", password: "weakpass1!" })
-                .expect(400);
-
-            expect(res.body.errors || res.body.message).toBeDefined();
-        });
-
-        it("should reject weak password (too short)", async () => {
-            const res = await agent
-                .post("/api/auth/register")
-                .send({ email: "short@example.com", password: "Sh1!" })
-                .expect(400);
-
-            expect(res.body.errors || res.body.message).toBeDefined();
-        });
-
-        it("should reject invalid email", async () => {
-            const res = await agent
-                .post("/api/auth/register")
-                .send({ email: "not-an-email", password: "ValidPass1!" })
-                .expect(400);
-
-            expect(res.body.errors || res.body.message).toBeDefined();
         });
     });
 
-    // ─── Login ──────────────────────────────────────────────────
+    // ─── Sign In ──────────────────────────────────────────────
 
-    describe("POST /api/auth/login", () => {
-        it("should login with correct credentials", async () => {
+    describe("POST /api/auth/sign-in/email", () => {
+        it("should sign in with correct credentials", async () => {
             const res = await agent
-                .post("/api/auth/login")
-                .send(testUser)
+                .post("/api/auth/sign-in/email")
+                .send({
+                    email: testUser.email,
+                    password: testUser.password,
+                })
                 .expect(200);
 
-            expect(res.body).toHaveProperty("accessToken");
+            expect(res.body).toHaveProperty("user");
+            expect(res.body.user.email).toBe(testUser.email);
             const cookies = res.headers["set-cookie"];
             expect(cookies).toBeDefined();
-            // set-cookie can be string (single cookie) or string[] — normalize to array
-            const cookieList = Array.isArray(cookies) ? cookies : [cookies];
-            expect(cookieList.some((c: string) => c.startsWith("jid="))).toBe(true);
         });
 
         it("should reject wrong password", async () => {
             const res = await agent
-                .post("/api/auth/login")
+                .post("/api/auth/sign-in/email")
                 .send({ email: testUser.email, password: "WrongPass1!" })
-                .expect(400);
+                .expect(401);
 
-            expect(res.body.message).toMatch(/invalid credentials/i);
+            expect(res.body).toHaveProperty("message");
         });
 
         it("should reject non-existent email", async () => {
             const res = await agent
-                .post("/api/auth/login")
+                .post("/api/auth/sign-in/email")
                 .send({ email: "nobody@example.com", password: "SomePass1!" })
-                .expect(400);
+                .expect(401);
 
-            expect(res.body.message).toMatch(/invalid credentials/i);
-        });
-
-        it("should reject missing fields", async () => {
-            await agent.post("/api/auth/login").send({}).expect(400);
+            expect(res.body).toHaveProperty("message");
         });
     });
 
-    // ─── Protected Route ────────────────────────────────────────
+    // ─── Protected Route ──────────────────────────────────────
 
     describe("GET /api/items (protected)", () => {
-        it("should reject requests without a token (401)", async () => {
-            await agent.get("/api/items").expect(401);
+        it("should reject requests without a session (401)", async () => {
+            await request(app).get("/api/items").expect(401);
         });
 
-        it("should reject requests with an invalid token (403)", async () => {
-            await agent
-                .get("/api/items")
-                .set("Authorization", "Bearer invalid-token")
-                .expect(403);
-        });
+        it("should accept requests with a valid session", async () => {
+            // Login to get session cookie
+            await agent.post("/api/auth/sign-in/email").send({
+                email: testUser.email,
+                password: testUser.password,
+            });
 
-        it("should accept requests with a valid token", async () => {
-            // Login to get a fresh token
-            const loginRes = await agent.post("/api/auth/login").send(testUser);
-            const token = loginRes.body.accessToken;
-
-            const res = await agent
-                .get("/api/items")
-                .set("Authorization", `Bearer ${token}`)
-                .expect(200);
-
+            const res = await agent.get("/api/items").expect(200);
             expect(Array.isArray(res.body)).toBe(true);
         });
     });
 
-    // ─── Refresh Token ──────────────────────────────────────────
+    // ─── Session ──────────────────────────────────────────────
 
-    describe("POST /api/auth/refresh", () => {
-        it("should refresh the token and rotate", async () => {
-            // Login to get the refresh cookie
-            const loginRes = await agent.post("/api/auth/login").send(testUser);
-            const cookies = loginRes.headers["set-cookie"];
-            const cookieStr = Array.isArray(cookies) ? cookies.join("; ") : cookies;
+    describe("GET /api/auth/get-session", () => {
+        it("should return the current session", async () => {
+            const res = await agent.get("/api/auth/get-session").expect(200);
 
-            const res = await agent
-                .post("/api/auth/refresh")
-                .set("Cookie", cookieStr)
-                .expect(200);
-
-            expect(res.body).toHaveProperty("accessToken");
-            // New cookie should be set
-            const newCookies = res.headers["set-cookie"];
-            expect(newCookies).toBeDefined();
-        });
-
-        it("should reject without a refresh cookie", async () => {
-            // Use a fresh agent without any persisted cookies
-            await request(app).post("/api/auth/refresh").expect(401);
+            expect(res.body).toHaveProperty("user");
+            expect(res.body.user.email).toBe(testUser.email);
+            expect(res.body).toHaveProperty("session");
         });
     });
 
-    // ─── Logout ─────────────────────────────────────────────────
+    // ─── Sign Out ─────────────────────────────────────────────
 
-    describe("POST /api/auth/logout", () => {
-        it("should logout and clear cookie", async () => {
-            const loginRes = await agent.post("/api/auth/login").send(testUser);
-            const cookies = loginRes.headers["set-cookie"];
-            const cookieStr = Array.isArray(cookies) ? cookies.join("; ") : cookies;
+    describe("POST /api/auth/sign-out", () => {
+        it("should sign out and clear session", async () => {
+            const res = await agent.post("/api/auth/sign-out").expect(200);
 
-            const res = await agent
-                .post("/api/auth/logout")
-                .set("Cookie", cookieStr)
-                .expect(200);
-
-            expect(res.body.message).toMatch(/logged out/i);
+            expect(res.body).toHaveProperty("success", true);
         });
-    });
 
-    // ─── Full Auth Flow ─────────────────────────────────────────
-
-    describe("Full auth flow", () => {
-        it("register → login → access → refresh → access again → logout", async () => {
-            const user = {
-                email: "flow@example.com",
-                password: "FlowTest1!",
-            };
-
-            // Register
-            const regRes = await agent.post("/api/auth/register").send(user);
-            expect(regRes.status).toBe(200);
-            const regCookies = regRes.headers["set-cookie"];
-
-            // Login
-            const loginRes = await agent.post("/api/auth/login").send(user);
-            expect(loginRes.status).toBe(200);
-            let token = loginRes.body.accessToken;
-            let cookies = loginRes.headers["set-cookie"];
-            let cookieStr = Array.isArray(cookies) ? cookies.join("; ") : cookies;
-
-            // Access protected route
-            const accessRes = await agent
-                .get("/api/items")
-                .set("Authorization", `Bearer ${token}`);
-            expect(accessRes.status).toBe(200);
-
-            // Refresh
-            const refreshRes = await agent
-                .post("/api/auth/refresh")
-                .set("Cookie", cookieStr);
-            expect(refreshRes.status).toBe(200);
-            token = refreshRes.body.accessToken;
-            cookies = refreshRes.headers["set-cookie"];
-            cookieStr = Array.isArray(cookies) ? cookies.join("; ") : cookies;
-
-            // Access with new token
-            const access2Res = await agent
-                .get("/api/items")
-                .set("Authorization", `Bearer ${token}`);
-            expect(access2Res.status).toBe(200);
-
-            // Logout
-            const logoutRes = await agent
-                .post("/api/auth/logout")
-                .set("Cookie", cookieStr);
-            expect(logoutRes.status).toBe(200);
+        it("should reject access after sign out", async () => {
+            await agent.get("/api/items").expect(401);
         });
     });
 });

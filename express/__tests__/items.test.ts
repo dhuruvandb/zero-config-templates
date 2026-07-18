@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { execSync } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
@@ -20,6 +21,11 @@ if (fs.existsSync(testDbPath)) {
     try { fs.unlinkSync(testDbPath); } catch { /* ignore EBUSY */ }
 }
 
+// Set required Better Auth env vars
+process.env.BETTER_AUTH_SECRET = "test-secret-at-least-32-characters-long-for-better-auth";
+process.env.BETTER_AUTH_URL = "http://localhost:5000";
+process.env.NODE_ENV = "test";
+
 execSync(
     `npx prisma db push --schema=prisma/schema.test.prisma --accept-data-loss`,
     {
@@ -29,31 +35,21 @@ execSync(
     }
 );
 
-// Clear Prisma module cache so it reconnects to our test DB
-const prismaModule = require.resolve("../src/lib/prisma");
-delete require.cache[prismaModule];
-
 import app from "../src/app";
 
 const agent = request.agent(app);
 
 describe("Items API (CRUD)", () => {
-    let authToken: string;
     let itemId: string;
 
     beforeAll(async () => {
-        // Register + login to get a valid token
+        // Register + login to get a valid session
         const email = `crud-${Date.now()}@example.com`;
-        await agent.post("/api/auth/register").send({
+        await agent.post("/api/auth/sign-up/email").send({
+            name: "Test User",
             email,
             password: "CrudTest1!",
         });
-
-        const loginRes = await agent.post("/api/auth/login").send({
-            email,
-            password: "CrudTest1!",
-        });
-        authToken = loginRes.body.accessToken;
     });
 
     afterAll(() => {
@@ -66,29 +62,24 @@ describe("Items API (CRUD)", () => {
         }
     });
 
-    const authed = (req: request.Test) =>
-        req.set("Authorization", `Bearer ${authToken}`);
-
     // ─── CREATE ────────────────────────────────────────────────
 
     describe("POST /api/items", () => {
         it("should create an item with auth", async () => {
-            const res = await authed(agent.post("/api/items").send({ name: "Test Item" }))
+            const res = await agent
+                .post("/api/items")
+                .send({ name: "Test Item" })
                 .expect(201);
 
             expect(res.body).toHaveProperty("id");
             expect(res.body.name).toBe("Test Item");
             expect(res.body).toHaveProperty("createdAt");
+            expect(res.body).toHaveProperty("userId");
             itemId = res.body.id;
         });
 
         it("should reject creation without auth", async () => {
-            await agent.post("/api/items").send({ name: "No Auth Item" }).expect(401);
-        });
-
-        it("should reject creation with empty body", async () => {
-            const res = await authed(agent.post("/api/items").send({})).expect(500);
-            // Missing name will cause a Prisma error
+            await request(app).post("/api/items").send({ name: "No Auth Item" }).expect(401);
         });
     });
 
@@ -96,14 +87,14 @@ describe("Items API (CRUD)", () => {
 
     describe("GET /api/items", () => {
         it("should list items with auth", async () => {
-            const res = await authed(agent.get("/api/items")).expect(200);
+            const res = await agent.get("/api/items").expect(200);
 
             expect(Array.isArray(res.body)).toBe(true);
             expect(res.body.length).toBeGreaterThanOrEqual(1);
         });
 
         it("should reject listing without auth", async () => {
-            await agent.get("/api/items").expect(401);
+            await request(app).get("/api/items").expect(401);
         });
     });
 
@@ -111,22 +102,24 @@ describe("Items API (CRUD)", () => {
 
     describe("PUT /api/items/:id", () => {
         it("should update an item with auth", async () => {
-            const res = await authed(
-                agent.put(`/api/items/${itemId}`).send({ name: "Updated Item" })
-            ).expect(200);
+            const res = await agent
+                .put(`/api/items/${itemId}`)
+                .send({ name: "Updated Item" })
+                .expect(200);
 
             expect(res.body.name).toBe("Updated Item");
             expect(res.body.id).toBe(itemId);
         });
 
         it("should reject update without auth", async () => {
-            await agent.put(`/api/items/${itemId}`).send({ name: "Hacked" }).expect(401);
+            await request(app).put(`/api/items/${itemId}`).send({ name: "Hacked" }).expect(401);
         });
 
         it("should return 404 for non-existent item", async () => {
-            await authed(
-                agent.put("/api/items/nonexistent-id").send({ name: "Ghost" })
-            ).expect(404);
+            await agent
+                .put("/api/items/nonexistent-id")
+                .send({ name: "Ghost" })
+                .expect(404);
         });
     });
 
@@ -134,17 +127,17 @@ describe("Items API (CRUD)", () => {
 
     describe("DELETE /api/items/:id", () => {
         it("should delete an item with auth", async () => {
-            const res = await authed(agent.delete(`/api/items/${itemId}`)).expect(200);
+            const res = await agent.delete(`/api/items/${itemId}`).expect(200);
 
             expect(res.body.message).toBe("Deleted");
         });
 
         it("should reject deletion without auth", async () => {
-            await agent.delete(`/api/items/${itemId}`).expect(401);
+            await request(app).delete(`/api/items/${itemId}`).expect(401);
         });
 
         it("should return 404 for already deleted item", async () => {
-            await authed(agent.delete(`/api/items/${itemId}`)).expect(404);
+            await agent.delete(`/api/items/${itemId}`).expect(404);
         });
     });
 });

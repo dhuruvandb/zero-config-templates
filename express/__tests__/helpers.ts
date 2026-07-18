@@ -1,8 +1,6 @@
 import { execSync } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
-import app from "../src/app";
-import type { AuthRequest } from "../src/middleware/auth";
 
 const TEST_DB_DIR = path.join(__dirname, "..", ".test-data");
 
@@ -38,16 +36,6 @@ export function teardownTestDb(dbUrl: string): void {
             // Ignore cleanup errors
         }
     }
-}
-
-// Override the prisma client's datasource URL at runtime
-// by re-importing with a different DATABASE_URL
-export function createTestApp(dbUrl: string): typeof app {
-    process.env.DATABASE_URL = dbUrl;
-    // Clear module cache so prisma reconnects with new URL
-    const prismaModule = require.resolve("../src/lib/prisma");
-    delete require.cache[prismaModule];
-    return require("../src/app").default;
 }
 
 // Helper to extract cookie from supertest response

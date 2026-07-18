@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref } from 'vue'
+import { authClient } from '@/lib/auth-client'
 import { useAuthStore } from '@/stores/auth'
 import Auth from '@/components/Auth/Auth.vue'
 import ItemsList from '@/components/Items/ItemsList.vue'
 
 const auth = useAuthStore()
-const isLoggedIn = computed(() => !!auth.accessToken)
+const { data: session, isPending } = authClient.useSession()
+const isLoggedIn = ref(false)
+
+// Watch session changes
+session.value ? (isLoggedIn.value = true) : (isLoggedIn.value = false)
 </script>
 
 <template>
-  <div v-if="!isLoggedIn">
+  <div v-if="isPending" class="loading">Loading...</div>
+
+  <div v-else-if="!session">
     <Auth />
   </div>
 
@@ -20,6 +27,6 @@ const isLoggedIn = computed(() => !!auth.accessToken)
       <button class="logout-btn" @click="auth.logout()">Logout</button>
     </div>
 
-    <ItemsList :access-token="auth.accessToken" />
+    <ItemsList />
   </div>
 </template>

@@ -3,70 +3,58 @@
 import { useEffect, useState } from "react";
 
 interface Item {
-  _id: string;
+  id: string;
   name: string;
 }
 
-export default function ItemsComponent({
-  accessToken,
-}: {
-  accessToken: string;
-}) {
+export default function ItemsComponent() {
   const [items, setItems] = useState<Item[]>([]);
   const [newItem, setNewItem] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
 
-  async function fetchItems() {
-    const res = await fetch("/api/items", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+  async function apiFetch(path: string, options: RequestInit = {}) {
+    const res = await fetch(path, {
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...options.headers as any },
+      ...options,
     });
-    const data = await res.json();
-    setItems(data);
+    return res.json();
+  }
+
+  async function fetchItems() {
+    const data = await apiFetch("/api/items");
+    setItems(Array.isArray(data) ? data : []);
   }
 
   async function addItem() {
     if (!newItem.trim()) return;
 
-    const res = await fetch("/api/items", {
+    const created = await apiFetch("/api/items", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({ name: newItem }),
     });
 
-    const created = await res.json();
     setItems([...items, created]);
     setNewItem("");
   }
 
   async function deleteItem(id: string) {
-    await fetch(`/api/items/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    setItems(items.filter((i) => i._id !== id));
+    await apiFetch(`/api/items/${id}`, { method: "DELETE" });
+    setItems(items.filter((i) => i.id !== id));
   }
 
   async function updateItem(id: string, newName: string) {
     if (!newName.trim()) return;
 
-    const res = await fetch(`/api/items/${id}`, {
+    await apiFetch(`/api/items/${id}`, {
       method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({ name: newName }),
     });
 
-    if (res.ok) {
-      setItems(items.map((i) => (i._id === id ? { ...i, name: newName } : i)));
-      setEditId(null);
-      setEditName("");
-    }
+    setItems(items.map((i) => (i.id === id ? { ...i, name: newName } : i)));
+    setEditId(null);
+    setEditName("");
   }
 
   useEffect(() => {
@@ -88,8 +76,8 @@ export default function ItemsComponent({
 
       <ul className="item-list">
         {items.map((item) => (
-          <li key={item._id} className="item">
-            {editId === item._id ? (
+          <li key={item.id} className="item">
+            {editId === item.id ? (
               <input
                 type="text"
                 value={editName}
@@ -108,11 +96,11 @@ export default function ItemsComponent({
               item.name
             )}
             <div style={{ display: "flex", gap: "0.5rem" }}>
-              {editId === item._id ? (
+              {editId === item.id ? (
                 <>
                   <button
                     className="delete-btn"
-                    onClick={() => updateItem(item._id, editName)}
+                    onClick={() => updateItem(item.id, editName)}
                     style={{ background: "#34c759" }}
                   >
                     Save
@@ -129,7 +117,7 @@ export default function ItemsComponent({
                   <button
                     className="delete-btn"
                     onClick={() => {
-                      setEditId(item._id);
+                      setEditId(item.id);
                       setEditName(item.name);
                     }}
                     style={{ background: "#007aff" }}
@@ -138,7 +126,7 @@ export default function ItemsComponent({
                   </button>
                   <button
                     className="delete-btn"
-                    onClick={() => deleteItem(item._id)}
+                    onClick={() => deleteItem(item.id)}
                   >
                     Delete
                   </button>

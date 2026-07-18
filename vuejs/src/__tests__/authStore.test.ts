@@ -1,64 +1,62 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import { useAuthStore } from "../stores/auth";
+import { authClient } from "../lib/auth-client";
 
-// Mock the api module
-vi.mock("../api/api", () => ({
-    default: {
-        post: vi.fn(),
-        authGet: vi.fn(),
-        authDelete: vi.fn(),
+// Mock authClient
+vi.mock("../lib/auth-client", () => ({
+    authClient: {
+        signIn: { email: vi.fn() },
+        signUp: { email: vi.fn() },
+        signOut: vi.fn(),
     },
 }));
 
 describe("AuthStore", () => {
     beforeEach(() => {
         setActivePinia(createPinia());
-        localStorage.clear();
+        vi.clearAllMocks();
     });
 
-    it("should initialize with null token when localStorage is empty", () => {
-        const store = useAuthStore();
-        expect(store.accessToken).toBeNull();
-    });
-
-    it("should restore token from localStorage", () => {
-        localStorage.setItem("token", "saved-token");
-
-        const store = useAuthStore();
-        expect(store.accessToken).toBe("saved-token");
-    });
-
-    it("should set token after login", async () => {
-        const api = (await import("../api/api")).default;
-        (api.post as any).mockResolvedValue({ accessToken: "new-token" });
+    it("should call signIn.email on login", async () => {
+        const mockSignIn = vi.fn().mockResolvedValue({ error: null });
+        (authClient.signIn.email as any) = mockSignIn;
 
         const store = useAuthStore();
         await store.login("a@b.com", "pass");
 
-        expect(store.accessToken).toBe("new-token");
-        expect(localStorage.getItem("token")).toBe("new-token");
+        expect(mockSignIn).toHaveBeenCalledWith({ email: "a@b.com", password: "pass" });
     });
 
     it("should throw on failed login", async () => {
-        const api = (await import("../api/api")).default;
-        (api.post as any).mockResolvedValue({ message: "Invalid credentials" });
+        (authClient.signIn.email as any) = vi.fn().mockResolvedValue({
+            error: { message: "Invalid credentials" },
+        });
 
         const store = useAuthStore();
         await expect(store.login("a@b.com", "wrong")).rejects.toThrow(
             "Invalid credentials"
         );
-        expect(store.accessToken).toBeNull();
     });
 
-    it("should clear token after logout", () => {
-        localStorage.setItem("token", "existing-token");
+    it("should call signUp.email on register", async () => {
+        const mockSignUp = vi.fn().mockResolvedValue({ error: null });
+        (authClient.signUp.email as any) = mockSignUp;
 
         const store = useAuthStore();
-        store.accessToken = "existing-token";
+        await store.register("a@b.com", "pass");
+
+        expect(mockSignUp).toHaveBeenCalledWith({
+            email: "a@b.com",
+            password: "pass",
+            name: "a",
+        });
+    });
+
+    it("should call signOut on logout", () => {
+        const store = useAuthStore();
         store.logout();
 
-        expect(store.accessToken).toBeNull();
-        expect(localStorage.getItem("token")).toBeNull();
+        expect(authClient.signOut).toHaveBeenCalled();
     });
 });

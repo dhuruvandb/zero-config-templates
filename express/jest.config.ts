@@ -7,6 +7,16 @@ const config: Config = {
     testMatch: ["**/*.test.ts"],
     setupFiles: ["<rootDir>/__tests__/setup.ts"],
     testTimeout: 15000,
+    transform: {
+        "^.+\\.tsx?$": ["ts-jest", { useESM: true }],
+        "^.+\\.m?js$": ["ts-jest", { useESM: true }],
+    },
+    transformIgnorePatterns: [
+        "node_modules/(?!(better-auth|better-call|@better-auth)/)",
+    ],
+    moduleNameMapper: {
+        "^(\\.{1,2}/.*)\\.js$": "$1",
+    },
     // Run tests serially — test files share a SQLite database
     maxWorkers: 1,
 };

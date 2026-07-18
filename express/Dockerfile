@@ -4,7 +4,8 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+COPY prisma ./prisma
+RUN npm install && npx prisma generate
 COPY . .
 RUN npm run build
 
@@ -21,8 +22,9 @@ COPY --from=builder /app/package-lock.json ./
 COPY --from=builder /app/prisma ./prisma
 
 # Single RUN: install prod deps, generate Prisma client
-RUN npm ci --omit=dev && \
+RUN npm install && \
     ./node_modules/.bin/prisma generate && \
+    npm prune --omit=dev && \
     rm -rf /root/.npm /tmp/*
 
 EXPOSE 5000

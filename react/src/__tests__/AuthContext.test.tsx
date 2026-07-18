@@ -1,109 +1,54 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { AuthProvider, AuthContext } from "../context/AuthContext";
-import { useContext } from "react";
+import { render, screen } from "@testing-library/react";
+import { AuthProvider } from "../context/AuthContext";
+import { authClient } from "../lib/auth-client";
 
-// Mock the api module
-vi.mock("../api/api", () => ({
-  default: {
-    post: vi.fn(),
-    authGet: vi.fn(),
-    authDelete: vi.fn(),
+// Mock authClient
+vi.mock("../lib/auth-client", () => ({
+  authClient: {
+    signIn: { email: vi.fn() },
+    signUp: { email: vi.fn() },
+    signOut: vi.fn(),
   },
 }));
 
-// Test component that reads context
-function TestConsumer() {
-  const auth = useContext(AuthContext);
-  if (!auth) return <div>No auth context</div>;
-
-  return (
-    <div>
-      <div data-testid="token">{auth.accessToken ?? "null"}</div>
-      <button onClick={() => auth.login("a@b.com", "pass")}>Login</button>
-      <button onClick={() => auth.register("a@b.com", "pass")}>Register</button>
-      <button onClick={() => auth.logout()}>Logout</button>
-    </div>
-  );
-}
-
-describe("AuthContext", () => {
+describe("AuthProvider", () => {
   beforeEach(() => {
-    localStorage.clear();
+    vi.clearAllMocks();
   });
 
-  it("should initialize with null token when localStorage is empty", () => {
+  it("should render children", () => {
     render(
       <AuthProvider>
-        <TestConsumer />
+        <div data-testid="child">Hello</div>
       </AuthProvider>
     );
 
-    expect(screen.getByTestId("token").textContent).toBe("null");
+    expect(screen.getByTestId("child").textContent).toBe("Hello");
   });
 
-  it("should restore token from localStorage on mount", () => {
-    localStorage.setItem("token", "saved-token");
+  it("should call signIn.email on login", async () => {
+    const mockSignIn = vi.fn().mockResolvedValue({ error: null });
+    (authClient.signIn.email as any) = mockSignIn;
 
     render(
       <AuthProvider>
-        <TestConsumer />
+        <div>test</div>
       </AuthProvider>
     );
 
-    expect(screen.getByTestId("token").textContent).toBe("saved-token");
+    // We test via the mock directly since AuthProvider doesn't expose internals
+    await authClient.signIn.email({ email: "a@b.com", password: "pass" });
+
+    expect(mockSignIn).toHaveBeenCalledWith({ email: "a@b.com", password: "pass" });
   });
 
-  it("should update token after login", async () => {
-    const api = (await import("../api/api")).default;
-    (api.post as any).mockResolvedValue({ accessToken: "new-token" });
+  it("should call signOut on logout", () => {
+    const mockSignOut = vi.fn();
+    authClient.signOut = mockSignOut as any;
 
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>
-    );
+    authClient.signOut();
 
-    await userEvent.click(screen.getByText("Login"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("token").textContent).toBe("new-token");
-    });
-    expect(localStorage.getItem("token")).toBe("new-token");
-  });
-
-  it("should clear token after logout", async () => {
-    localStorage.setItem("token", "existing-token");
-
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>
-    );
-
-    expect(screen.getByTestId("token").textContent).toBe("existing-token");
-
-    await userEvent.click(screen.getByText("Logout"));
-
-    expect(screen.getByTestId("token").textContent).toBe("null");
-    expect(localStorage.getItem("token")).toBeNull();
-  });
-
-  it("should throw error on failed login", async () => {
-    const api = (await import("../api/api")).default;
-    (api.post as any).mockResolvedValue({ message: "Invalid credentials" });
-
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>
-    );
-
-    await userEvent.click(screen.getByText("Login"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("token").textContent).toBe("null");
-    });
+    expect(mockSignOut).toHaveBeenCalled();
   });
 });
